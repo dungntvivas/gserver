@@ -1,14 +1,14 @@
 package gHTTP
 
 import (
+	"io/ioutil"
+	"net"
+	"net/http"
+
 	"github.com/gin-gonic/gin"
 	"gitlab.vivas.vn/go/gserver/gBase"
 	"gitlab.vivas.vn/go/internal/logger"
-	"net"
-	"net/http"
-	"time"
 )
-
 
 type RequestID struct {
 	TYPE  int `uri:"type" binding:"required"`
@@ -16,28 +16,23 @@ type RequestID struct {
 }
 
 type HTTPServer struct {
-    gBase.GServer
+	gBase.GServer
 	http_sv *http.Server
-}
-
-func (p *HTTPServer) LogInfo(format string, args ...interface{}) {
-	p.Logger.Log(logger.Info, "[HTTP] "+format, args...)
-}
-func (p *HTTPServer) LogDebug(format string, args ...interface{}) {
-	p.Logger.Log(logger.Debug, "[HTTP] "+format, args...)
-}
-func (p *HTTPServer) LogError(format string, args ...interface{}) {
-	p.Logger.Log(logger.Error, "[HTTP] "+format, args...)
 }
 
 func NewHttpServer(_addr string, _logger *logger.Logger, _done *chan struct{}, _tls gBase.TLS) (*HTTPServer, bool) {
 	p := &HTTPServer{
 		GServer: gBase.GServer{
-			Addr: _addr,
+			Addr:   _addr,
 			Logger: _logger,
-			Done: _done,
-			Tls: _tls,
+			Done:   _done,
+			Tls:    _tls,
 		},
+	}
+	if _tls.IsTLS {
+		p.ServerName = "HTTPS"
+	} else {
+		p.ServerName = "HTTP"
 	}
 
 	gin.SetMode(gin.ReleaseMode)
@@ -56,10 +51,10 @@ func (p *HTTPServer) Start() error {
 	if err != nil {
 		return err
 	}
-    if(p.Tls.IsTLS){
+	if p.Tls.IsTLS {
 		go p.http_sv.ServeTLS(listen, p.Tls.Cert, p.Tls.Key)
 		p.LogInfo("Listener opened on %s", p.Addr)
-	}else{
+	} else {
 		go p.http_sv.Serve(listen)
 		p.LogInfo("Listener opened on %s", p.Addr)
 	}
@@ -69,22 +64,32 @@ func (p *HTTPServer) Start() error {
 func (p *HTTPServer) onReceiveRequest(ctx *gin.Context) {
 	var urlParams RequestID
 	status := http.StatusOK
+	var res gBase.Result
+	result := make(chan gBase.Result)
 	contenxtType := ctx.Request.Header.Get("Content-Type")
 	if err := ctx.ShouldBindUri(&urlParams); err != nil {
 		p.LogError("err read param = [%v]", err.Error())
 		status = http.StatusBadRequest
 
 	}
-	result := make(chan gBase.Result)
-	go func() {
-		time.Sleep(5 * time.Second)
-		result <- gBase.Result{Status: 0,}
-	}()
-	_v := <- result
-    if(_v.Status != 0){
-    	status = http.StatusBadRequest
+	bindata, err := ioutil.ReadAll(ctx.Request.Body)
+	if err != nil {
+		p.LogError("Error read request body %v", err.Error())
+		goto on_return
 	}
-	ctx.Data(status, contenxtType,_v.Data)
+
+	// send data to handler
+	p.HandlerRequest(&result, &gBase.Payload{
+		BinData: bindata,
+		From:    gBase.RequestFrom_HTTP,
+	})
+	// wait for return data
+	res = <-result
+on_return:
+
+	if res.Status != 0 {
+		status = http.StatusBadRequest
+	}
+
+	ctx.Data(status, contenxtType, res.Data)
 }
-
-
