@@ -78,7 +78,7 @@ func (p *HTTPServer) onReceiveRequest(ctx *gin.Context) {
 	result := make(chan gBase.Result)
 	go func() {
 		time.Sleep(5 * time.Second)
-		result <- gBase.Result{Status: 1,}
+		result <- gBase.Result{Status: 0,}
 	}()
 	_v := <- result
     if(_v.Status != 0){
