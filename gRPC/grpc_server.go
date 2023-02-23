@@ -1,4 +1,4 @@
-package grpc
+package gRPC
 
 import (
 	"context"
@@ -17,7 +17,7 @@ type GRPCServer struct {
 	api.UnimplementedAPIServer
 }
 
-func NewServer(_addr string, _logger *logger.Logger, _done *chan struct{}, _tls gBase.TLS) {
+func NewServer(_addr string, _logger *logger.Logger, _done *chan struct{}, _tls gBase.TLS) *GRPCServer {
 	p := &GRPCServer{
 		GServer: gBase.GServer{
 			Addr:   _addr,
@@ -31,6 +31,7 @@ func NewServer(_addr string, _logger *logger.Logger, _done *chan struct{}, _tls 
 	} else {
 		p.ServerName = "GRPC"
 	}
+	return p
 }
 func (p *GRPCServer) Serve() error {
 	p.LogInfo("Start %v server ", p.ServerName)
