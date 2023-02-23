@@ -1,6 +1,9 @@
 package gBase
 
-import "gitlab.vivas.vn/go/internal/logger"
+import (
+	"gitlab.vivas.vn/go/grpc_api/api"
+	"gitlab.vivas.vn/go/internal/logger"
+)
 
 type RequestFrom uint8
 
@@ -16,11 +19,6 @@ type TLS struct {
 	Cert      string
 	Key       string
 	h2_Enable bool
-}
-
-type Payload struct {
-	BinData []byte
-	From    RequestFrom
 }
 
 type GServer struct {
@@ -41,6 +39,6 @@ func (p *GServer) LogError(format string, args ...interface{}) {
 	p.Logger.Log(logger.Error, "["+p.ServerName+"] "+format, args...)
 }
 
-func (p GServer) HandlerRequest(rs *chan Result, payload *Payload) {
+func (p GServer) HandlerRequest(rs *chan Result, payload *api.Request) {
 
 }
