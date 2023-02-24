@@ -18,15 +18,19 @@ type TLS struct {
 	IsTLS     bool
 	Cert      string
 	Key       string
-	h2_Enable bool
+	H2_Enable bool // sử dụng với server http // grpc default h2
+}
+type Payload struct {
+	ChResult chan *Result
 }
 
 type GServer struct {
-	Done       *chan struct{}
-	Logger     *logger.Logger
-	Addr       string
-	Tls        TLS
-	ServerName string
+	Done        *chan struct{}
+	Logger      *logger.Logger
+	Addr        string
+	Tls         TLS
+	ServerName  string
+	ChannelData chan *Payload
 }
 
 func (p *GServer) LogInfo(format string, args ...interface{}) {
@@ -39,6 +43,6 @@ func (p *GServer) LogError(format string, args ...interface{}) {
 	p.Logger.Log(logger.Error, "["+p.ServerName+"] "+format, args...)
 }
 
-func (p GServer) HandlerRequest(rs *chan Result, payload *api.Request) {
-
+func (p *GServer) HandlerRequest(rs chan *Result, payload *api.Request) {
+	p.ChannelData <- &Payload{ChResult: rs}
 }

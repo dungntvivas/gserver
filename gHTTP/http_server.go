@@ -32,6 +32,9 @@ func NewServer(_addr string, _logger *logger.Logger, _done *chan struct{}, _tls 
 	}
 	if _tls.IsTLS {
 		p.ServerName = "HTTPS"
+		if _tls.H2_Enable {
+			p.ServerName = "H2"
+		}
 	} else {
 		p.ServerName = "HTTP"
 	}
@@ -49,12 +52,17 @@ func NewServer(_addr string, _logger *logger.Logger, _done *chan struct{}, _tls 
 }
 
 func (p *HTTPServer) Serve() error {
+	p.LogInfo("Start %v server ", p.ServerName)
 	listen, err := net.Listen("tcp", p.Addr)
 	if err != nil {
 		return err
 	}
 	if p.Tls.IsTLS {
-		go p.http_sv.ServeTLS(listen, p.Tls.Cert, p.Tls.Key)
+		if p.Tls.H2_Enable {
+			go p.http_sv.ServeTLS(listen, p.Tls.Cert, p.Tls.Key)
+		} else {
+			go p.http_sv.ServeTLS(listen, p.Tls.Cert, p.Tls.Key)
+		}
 		p.LogInfo("Listener opened on %s", p.Addr)
 	} else {
 		go p.http_sv.Serve(listen)
@@ -67,7 +75,7 @@ func (p *HTTPServer) onReceiveRequest(ctx *gin.Context) {
 	var urlParams RequestID
 	status := http.StatusOK
 	var res gBase.Result
-	result := make(chan gBase.Result)
+	result := make(chan *gBase.Result)
 	contenxtType := ctx.Request.Header.Get("Content-Type")
 	ctType := gBase.ContextType_JSON
 	var bindata []byte
@@ -92,9 +100,10 @@ func (p *HTTPServer) onReceiveRequest(ctx *gin.Context) {
 	request.BinRequest = bindata
 
 	// send data to handler
-	p.HandlerRequest(&result, request)
+
+	p.HandlerRequest(result, request)
 	// wait for return data
-	res = <-result
+	res = *<-result
 on_return:
 
 	if res.Status != 0 {
