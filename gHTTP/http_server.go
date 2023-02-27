@@ -87,6 +87,7 @@ func (p *HTTPServer) onReceiveRequest(ctx *gin.Context) {
 	result := make(chan *gBase.Result)
 	defer close(result)
 	contenxtType := ctx.Request.Header.Get("Content-Type")
+	vAuthorization := ctx.Request.Header.Get("V-Authorization")
 	ctType := gBase.ContextType_JSON
 	var bindata []byte
 	var err error
@@ -101,8 +102,11 @@ func (p *HTTPServer) onReceiveRequest(ctx *gin.Context) {
 		p.LogError("err read param = [%v]", err.Error())
 		status = http.StatusBadRequest
 		goto on_return
-	}
+	}else{
 
+	}
+	request.Type = uint32(urlParams.TYPE)
+    request.Group = api.Group(urlParams.GROUP)
 	bindata, err = io.ReadAll(ctx.Request.Body)
 	if err != nil {
 		p.LogError("Error read request body %v", err.Error())
@@ -110,9 +114,10 @@ func (p *HTTPServer) onReceiveRequest(ctx *gin.Context) {
 	}
 	request.BinRequest = bindata
 
+
 	// send data to handler
 
-	p.HandlerRequest(&gBase.Payload{Request: request, ChResult: result})
+	p.HandlerRequest(&gBase.Payload{Request: request, ChResult: result,V_Authorization: vAuthorization})
 	// wait for return data
 	res = *<-result
 on_return:

@@ -26,6 +26,7 @@ type TLS struct {
 type Payload struct {
 	ChResult chan *Result
 	Request  *api.Request
+	V_Authorization string // được gửi khi sử dụng giao thức http , còn lại nắm sẵn trong request
 }
 
 type ConfigOption struct {
