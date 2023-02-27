@@ -8,7 +8,6 @@ import (
 	"gitlab.vivas.vn/go/gserver/gBase"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
-	"google.golang.org/grpc/examples/data"
 )
 
 type GRPCServer struct {
@@ -16,11 +15,15 @@ type GRPCServer struct {
 	api.UnimplementedAPIServer
 }
 
-func NewServer(_gsServer gBase.GServer) *GRPCServer {
-	p := &GRPCServer{
-		GServer: _gsServer,
+func New(config gBase.ConfigOption, chReceiveRequest chan *gBase.Payload) *GRPCServer {
+	b := gBase.GServer{
+		Config:           &config,
+		ChReceiveRequest: chReceiveRequest,
 	}
-	if _gsServer.Config.Tls.IsTLS {
+	p := &GRPCServer{
+		GServer: b,
+	}
+	if p.Config.Tls.IsTLS {
 		p.Config.ServerName = "GRPCS"
 	} else {
 		p.Config.ServerName = "GRPC"
