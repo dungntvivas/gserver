@@ -50,11 +50,8 @@ type GServer struct {
 	ChReceiveRequest chan *Payload
 }
 
-func NewGServer(config *ConfigOption, chReceiveRequest chan *Payload) *GServer {
-	p := &GServer{
-		Config: config,
-	}
-	return p
+func (p *GServer) Close(){
+
 }
 
 func (p *GServer) LogInfo(format string, args ...interface{}) {

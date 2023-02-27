@@ -1,6 +1,7 @@
 package gHTTP
 
 import (
+	"context"
 	"io"
 	"net"
 	"net/http"
@@ -17,6 +18,7 @@ type RequestID struct {
 
 type HTTPServer struct {
 	gBase.GServer
+	listen net.Listener
 	http_sv *http.Server
 }
 
@@ -53,23 +55,29 @@ func New(config gBase.ConfigOption, chReceiveRequest chan *gBase.Payload) *HTTPS
 
 func (p *HTTPServer) Serve() error {
 	p.LogInfo("Start %v server ", p.Config.ServerName)
-
-	listen, err := net.Listen("tcp", p.Config.Addr)
+    var err error
+	p.listen, err = net.Listen("tcp", p.Config.Addr)
 	if err != nil {
 		return err
 	}
 	if p.Config.Tls.IsTLS {
 		if p.Config.Tls.H2_Enable {
-			go p.http_sv.ServeTLS(listen, p.Config.Tls.Cert, p.Config.Tls.Key)
+			go p.http_sv.ServeTLS(p.listen, p.Config.Tls.Cert, p.Config.Tls.Key)
 		} else {
-			go p.http_sv.ServeTLS(listen, p.Config.Tls.Cert, p.Config.Tls.Key)
+			go p.http_sv.ServeTLS(p.listen, p.Config.Tls.Cert, p.Config.Tls.Key)
 		}
 		p.LogInfo("Listener opened on %s", p.Config.Addr)
 	} else {
-		go p.http_sv.Serve(listen)
+		go p.http_sv.Serve(p.listen)
 		p.LogInfo("Listener opened on %s", p.Config.Addr)
 	}
 	return nil
+}
+
+func (p *HTTPServer) Close(){
+	p.LogInfo("Close")
+	p.http_sv.Shutdown(context.Background())
+	p.listen.Close()
 }
 
 func (p *HTTPServer) onReceiveRequest(ctx *gin.Context) {

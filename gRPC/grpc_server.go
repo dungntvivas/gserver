@@ -12,6 +12,8 @@ import (
 
 type GRPCServer struct {
 	gBase.GServer
+	lis net.Listener
+	s *grpc.Server
 	api.UnimplementedAPIServer
 }
 
@@ -34,8 +36,8 @@ func (p *GRPCServer) Serve() error {
 	p.LogInfo("Start %v server ", p.Config.ServerName)
 
 	if p.Config.Tls.IsTLS {
-
-		lis, err := net.Listen("tcp", p.Config.Addr)
+        var err error
+		p.lis, err = net.Listen("tcp", p.Config.Addr)
 		if err != nil {
 			p.LogError("Listen error [%v]", err.Error())
 			close(*p.Config.Done)
@@ -46,28 +48,35 @@ func (p *GRPCServer) Serve() error {
 				p.LogError("credentials error [%v]", err.Error())
 				close(*p.Config.Done)
 			} else {
-				s := grpc.NewServer(grpc.Creds(creds))
-				api.RegisterAPIServer(s, p)
-				go s.Serve(lis)
+				p.s = grpc.NewServer(grpc.Creds(creds))
+				api.RegisterAPIServer(p.s, p)
+				go p.s.Serve(p.lis)
 				p.LogInfo("Listener opened on %s", p.Config.Addr)
 			}
 		}
 
 	} else {
-		lis, err := net.Listen("tcp", p.Config.Addr)
+		var err error
+		p.lis, err = net.Listen("tcp", p.Config.Addr)
 		if err != nil {
 			p.LogError("Listen error [%v]", err.Error())
 			close(*p.Config.Done)
 		} else {
-			s := grpc.NewServer()
-			api.RegisterAPIServer(s, p)
-			go s.Serve(lis)
+			p.s = grpc.NewServer()
+			api.RegisterAPIServer(p.s, p)
+			go p.s.Serve(p.lis)
 
 			p.LogInfo("Listener opened on %s", p.Config.Addr)
 		}
 	}
 
 	return nil
+}
+func (p *GRPCServer) Close(){
+	p.LogInfo("Close")
+	p.s.GracefulStop()
+	p.lis.Close()
+
 }
 
 func (p GRPCServer) SendRequest(ctx context.Context, request *api.Request) (*api.Reply, error) {
