@@ -87,6 +87,7 @@ func (p *gService) StartListenAndReceiveRequest() chan struct{} {
 		if p.grpc_server != nil {
 			p.grpc_server.Close()
 		}
+		close(p.receiveRequest)
 		p.done <- struct{}{}
 
 	}()
