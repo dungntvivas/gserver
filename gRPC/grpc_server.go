@@ -74,7 +74,7 @@ func (p *GRPCServer) Serve() error {
 }
 func (p *GRPCServer) Close(){
 	p.LogInfo("Close")
-	p.s.GracefulStop()
+	p.s.Stop()
 	p.lis.Close()
 
 }
