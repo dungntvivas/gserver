@@ -8,7 +8,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"gitlab.vivas.vn/go/grpc_api/api"
 	"gitlab.vivas.vn/go/gserver/gBase"
-	"gitlab.vivas.vn/go/internal/logger"
 )
 
 type RequestID struct {
@@ -21,22 +20,17 @@ type HTTPServer struct {
 	http_sv *http.Server
 }
 
-func NewServer(_addr string, _logger *logger.Logger, _done *chan struct{}, _tls gBase.TLS) (*HTTPServer, bool) {
+func NewServer(_gsServer gBase.GServer) (*HTTPServer, bool) {
 	p := &HTTPServer{
-		GServer: gBase.GServer{
-			Addr:   _addr,
-			Logger: _logger,
-			Done:   _done,
-			Tls:    _tls,
-		},
+		GServer: _gsServer,
 	}
-	if _tls.IsTLS {
-		p.ServerName = "HTTPS"
-		if _tls.H2_Enable {
-			p.ServerName = "H2"
+	if _gsServer.Config.Tls.IsTLS {
+		p.Config.ServerName = "HTTPS"
+		if _gsServer.Config.Tls.H2_Enable {
+			p.Config.ServerName = "H2"
 		}
 	} else {
-		p.ServerName = "HTTP"
+		p.Config.ServerName = "HTTP"
 	}
 
 	gin.SetMode(gin.ReleaseMode)
@@ -52,21 +46,22 @@ func NewServer(_addr string, _logger *logger.Logger, _done *chan struct{}, _tls 
 }
 
 func (p *HTTPServer) Serve() error {
-	p.LogInfo("Start %v server ", p.ServerName)
-	listen, err := net.Listen("tcp", p.Addr)
+	p.LogInfo("Start %v server ", p.Config.ServerName)
+
+	listen, err := net.Listen("tcp", p.Config.Addr)
 	if err != nil {
 		return err
 	}
-	if p.Tls.IsTLS {
-		if p.Tls.H2_Enable {
-			go p.http_sv.ServeTLS(listen, p.Tls.Cert, p.Tls.Key)
+	if p.Config.Tls.IsTLS {
+		if p.Config.Tls.H2_Enable {
+			go p.http_sv.ServeTLS(listen, p.Config.Tls.Cert, p.Config.Tls.Key)
 		} else {
-			go p.http_sv.ServeTLS(listen, p.Tls.Cert, p.Tls.Key)
+			go p.http_sv.ServeTLS(listen, p.Config.Tls.Cert, p.Config.Tls.Key)
 		}
-		p.LogInfo("Listener opened on %s", p.Addr)
+		p.LogInfo("Listener opened on %s", p.Config.Addr)
 	} else {
 		go p.http_sv.Serve(listen)
-		p.LogInfo("Listener opened on %s", p.Addr)
+		p.LogInfo("Listener opened on %s", p.Config.Addr)
 	}
 	return nil
 }
@@ -76,6 +71,7 @@ func (p *HTTPServer) onReceiveRequest(ctx *gin.Context) {
 	status := http.StatusOK
 	var res gBase.Result
 	result := make(chan *gBase.Result)
+	defer close(result)
 	contenxtType := ctx.Request.Header.Get("Content-Type")
 	ctType := gBase.ContextType_JSON
 	var bindata []byte
@@ -84,7 +80,7 @@ func (p *HTTPServer) onReceiveRequest(ctx *gin.Context) {
 		ctType = gBase.ContextType_BIN
 	}
 	request := &api.Request{
-		Protocol:    uint32(gBase.RequestFrom_HTTP),
+		Protocol:    uint32(gBase.RequestProtocol_HTTP),
 		PayloadType: uint32(ctType),
 	}
 	if err := ctx.ShouldBindUri(&urlParams); err != nil {
@@ -101,7 +97,7 @@ func (p *HTTPServer) onReceiveRequest(ctx *gin.Context) {
 
 	// send data to handler
 
-	p.HandlerRequest(result, request)
+	p.HandlerRequest(&gBase.Payload{Request: request, ChResult: result})
 	// wait for return data
 	res = *<-result
 on_return:

@@ -5,13 +5,16 @@ import (
 	"gitlab.vivas.vn/go/internal/logger"
 )
 
-type RequestFrom uint8
+type RequestProtocol uint8
 
 const (
-	RequestFrom_HTTP   RequestFrom = 0x20
-	RequestFrom_SOCKET RequestFrom = 0x40
-	RequestFrom_GRPC   RequestFrom = 0x60
-	RequestFrom_NONE   RequestFrom = 0x0
+	RequestProtocol_HTTP   RequestProtocol = 0x2
+	RequestProtocol_SOCKET RequestProtocol = 0x4
+	RequestProtocol_GRPC   RequestProtocol = 0x8
+	RequestProtocol_TCP    RequestProtocol = 0x10
+	RequestProtocol_WS     RequestProtocol = 0x20
+	RequestProtocol_UDP    RequestProtocol = 0x40
+	RequestProtocol_NONE   RequestProtocol = 0x0
 )
 
 type TLS struct {
@@ -22,27 +25,46 @@ type TLS struct {
 }
 type Payload struct {
 	ChResult chan *Result
+	Request  *api.Request
+}
+
+type ConfigOption struct {
+	Done       *chan struct{}
+	Logger     *logger.Logger
+	Addr       string
+	Tls        TLS
+	ServerName string
+	Protocol   RequestProtocol
+}
+
+type GSServerInterface interface {
+	HandlerRequest(payload *Payload)
 }
 
 type GServer struct {
-	Done        *chan struct{}
-	Logger      *logger.Logger
-	Addr        string
-	Tls         TLS
-	ServerName  string
-	ChannelData chan *Payload
+	Config *ConfigOption
+	//out
+	ChReceiveRequest chan *Payload
+}
+
+func NewGServer(config *ConfigOption, chReceiveRequest chan *Payload) *GServer {
+	p := &GServer{
+		Config: config,
+	}
+	return p
 }
 
 func (p *GServer) LogInfo(format string, args ...interface{}) {
-	p.Logger.Log(logger.Info, "["+p.ServerName+"] "+format, args...)
+	p.Config.Logger.Log(logger.Info, "["+p.Config.ServerName+"] "+format, args...)
 }
 func (p *GServer) LogDebug(format string, args ...interface{}) {
-	p.Logger.Log(logger.Debug, "["+p.ServerName+"] "+format, args...)
+	p.Config.Logger.Log(logger.Debug, "["+p.Config.ServerName+"] "+format, args...)
 }
 func (p *GServer) LogError(format string, args ...interface{}) {
-	p.Logger.Log(logger.Error, "["+p.ServerName+"] "+format, args...)
+	p.Config.Logger.Log(logger.Error, "["+p.Config.ServerName+"] "+format, args...)
 }
 
-func (p *GServer) HandlerRequest(rs chan *Result, payload *api.Request) {
-	p.ChannelData <- &Payload{ChResult: rs}
+func (p *GServer) HandlerRequest(payload *Payload) {
+	/// PUSH TO Handler
+	p.ChReceiveRequest <- payload
 }
