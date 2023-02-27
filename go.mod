@@ -7,7 +7,6 @@ require (
 	gitlab.vivas.vn/go/grpc_api v0.9.2
 	gitlab.vivas.vn/go/internal v0.9.0
 	google.golang.org/grpc v1.52.0
-	google.golang.org/grpc/examples v0.0.0-20230222033013-5353eaa44095
 
 )
 

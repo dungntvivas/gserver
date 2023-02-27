@@ -41,7 +41,7 @@ func (p *GRPCServer) Serve() error {
 			close(*p.Config.Done)
 		} else {
 			// Create tls based credential.
-			creds, err := credentials.NewServerTLSFromFile(data.Path(p.Config.Tls.Cert), data.Path(p.Config.Tls.Key))
+			creds, err := credentials.NewServerTLSFromFile(p.Config.Tls.Cert, p.Config.Tls.Key)
 			if err != nil {
 				p.LogError("credentials error [%v]", err.Error())
 				close(*p.Config.Done)

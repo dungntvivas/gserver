@@ -1,7 +1,7 @@
 package gHTTP
 
 import (
-	"io/ioutil"
+	"io"
 	"net"
 	"net/http"
 
@@ -20,7 +20,7 @@ type HTTPServer struct {
 	http_sv *http.Server
 }
 
-func New(config gBase.ConfigOption, chReceiveRequest chan *gBase.Payload) (*HTTPServer, bool) {
+func New(config gBase.ConfigOption, chReceiveRequest chan *gBase.Payload) *HTTPServer {
 
 	b := gBase.GServer{
 		Config:           &config,
@@ -48,7 +48,7 @@ func New(config gBase.ConfigOption, chReceiveRequest chan *gBase.Payload) (*HTTP
 		Handler: http_sv,
 	}
 
-	return p, true
+	return p
 }
 
 func (p *HTTPServer) Serve() error {
@@ -94,7 +94,8 @@ func (p *HTTPServer) onReceiveRequest(ctx *gin.Context) {
 		status = http.StatusBadRequest
 		goto on_return
 	}
-	bindata, err = ioutil.ReadAll(ctx.Request.Body)
+
+	bindata, err = io.ReadAll(ctx.Request.Body)
 	if err != nil {
 		p.LogError("Error read request body %v", err.Error())
 		goto on_return
