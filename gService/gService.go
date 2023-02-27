@@ -89,7 +89,7 @@ func (p *gService)StartListenAndReceiveRequest() chan struct{}{
 	return p.done
 }
 
-func (p *gService)registerHandler(request CallbackRequest){
+func (p *gService)RegisterHandler(request CallbackRequest){
 	p.cb = request
 }
 
