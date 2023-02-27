@@ -20,19 +20,24 @@ type HTTPServer struct {
 	http_sv *http.Server
 }
 
-func NewServer(_gsServer gBase.GServer) (*HTTPServer, bool) {
-	p := &HTTPServer{
-		GServer: _gsServer,
+func New(config gBase.ConfigOption, chReceiveRequest chan *gBase.Payload) (*HTTPServer, bool) {
+
+	b := gBase.GServer{
+		Config:           &config,
+		ChReceiveRequest: chReceiveRequest,
 	}
-	if _gsServer.Config.Tls.IsTLS {
+	p := &HTTPServer{
+		GServer: b,
+	}
+	if p.Config.Tls.IsTLS {
 		p.Config.ServerName = "HTTPS"
-		if _gsServer.Config.Tls.H2_Enable {
+		if p.Config.Tls.H2_Enable {
 			p.Config.ServerName = "H2"
 		}
 	} else {
 		p.Config.ServerName = "HTTP"
-	}
 
+	}
 	gin.SetMode(gin.ReleaseMode)
 	http_sv := gin.New()
 	gV1 := http_sv.Group("/v1")
@@ -42,6 +47,7 @@ func NewServer(_gsServer gBase.GServer) (*HTTPServer, bool) {
 	p.http_sv = &http.Server{
 		Handler: http_sv,
 	}
+
 	return p, true
 }
 

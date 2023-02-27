@@ -37,8 +37,11 @@ type ConfigOption struct {
 	Protocol   RequestProtocol
 }
 
-type GSServerInterface interface {
-	HandlerRequest(payload *Payload)
+var DefaultHttpConfigOption = ConfigOption{
+	Addr:       ":44222",
+	Tls:        TLS{IsTLS: false},
+	Protocol:   RequestProtocol_HTTP,
+	ServerName: "HTTP",
 }
 
 type GServer struct {
