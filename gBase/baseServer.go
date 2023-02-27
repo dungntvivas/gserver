@@ -44,6 +44,8 @@ var DefaultHttpConfigOption = ConfigOption{
 	ServerName: "HTTP",
 }
 
+
+
 type GServer struct {
 	Config *ConfigOption
 	//out
