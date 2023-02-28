@@ -8,10 +8,9 @@ import (
 	"gitlab.vivas.vn/go/internal/logger"
 	"os"
 	"os/signal"
-	"runtime"
 )
 
-type CallbackRequest func(request *api.Request,v_auth string,reply chan *api.Reply)
+type CallbackRequest func(*gBase.Payload)
 type GService struct {
 	done           *chan struct{}
 	interrupt      chan os.Signal
@@ -51,19 +50,6 @@ func (p *GService) Wait() {
 	<-*p.done
 }
 
-func (p *GService) miniWorker() {
-	for j := range p.receiveRequest {
-		if p.cb != nil {
-             chrep := make(chan *api.Reply)
-             go p.cb(j.Request,j.V_Authorization,chrep)
-             rep := <- chrep
-             j.ChResult <- &gBase.Result{Status: int(rep.Status)}
-		} else {
-			j.ChResult <- &gBase.Result{Status: 1010} // request lạ
-		}
-	}
-}
-
 func (p *GService) StartListenAndReceiveRequest() chan struct{} {
 
 	if p.http_server != nil {
@@ -73,9 +59,7 @@ func (p *GService) StartListenAndReceiveRequest() chan struct{} {
 	if p.grpc_server != nil {
 		p.grpc_server.Serve()
 	}
-	for num := 0; num < runtime.NumCPU()*2; num++ {
-		go p.miniWorker()
-	}
+
 	go func() {
 	loop:
 		for {
@@ -85,21 +69,28 @@ func (p *GService) StartListenAndReceiveRequest() chan struct{} {
 			case <-p.interrupt:
 				p.LogInfo("shutting down gracefully")
 				break loop
+			case j := <-p.receiveRequest:
+				if p.cb != nil {
+					p.cb(j)
+				} else {
+					j.ChResult <- &gBase.Result{Status: int(api.ResultType_STRANGE_REQUEST), Reply: &api.Reply{Status: uint32(api.ResultType_STRANGE_REQUEST)}}
+				}
 			}
 		}
-		p.LogInfo("End Service")
-
-		if p.http_server != nil {
-			p.http_server.Close()
-		}
-		if p.grpc_server != nil {
-			p.grpc_server.Close()
-		}
-		close(p.receiveRequest)
-		*p.done <- struct{}{}
 	}()
+	p.LogInfo("End Service")
 
-	return *p.done
+	if p.http_server != nil {
+		p.http_server.Close()
+	}
+	if p.grpc_server != nil {
+		p.grpc_server.Close()
+	}
+	close(p.receiveRequest)
+	*p.done <- struct{}{}
+}()
+
+return *p.done
 }
 
 func (p *GService) RegisterHandler(request CallbackRequest) {
