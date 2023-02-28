@@ -79,7 +79,7 @@ func (p *GRPCServer) Close(){
 
 }
 
-func (p GRPCServer) SendRequest(ctx context.Context, request *api.Request) (*api.Reply, error) {
+func (p *GRPCServer) SendRequest(ctx context.Context, request *api.Request) (*api.Reply, error) {
 	result := make(chan *gBase.Result)
 	var res gBase.Result
 	reply := &api.Reply{
