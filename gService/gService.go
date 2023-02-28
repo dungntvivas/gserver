@@ -1,27 +1,22 @@
 package gService
 
 import (
-	"github.com/golang/protobuf/jsonpb"
 	"gitlab.vivas.vn/go/grpc_api/api"
 	"gitlab.vivas.vn/go/gserver/gBase"
 	"gitlab.vivas.vn/go/gserver/gHTTP"
 	"gitlab.vivas.vn/go/gserver/gRPC"
 	"gitlab.vivas.vn/go/internal/logger"
-	"google.golang.org/protobuf/encoding/protojson"
-	"google.golang.org/protobuf/proto"
 	"os"
 	"os/signal"
 	"runtime"
 )
 
-type CallbackRequest func(*gBase.Payload)
 type CallbackApiRequest func(request *api.Request,reply chan *api.Reply,v_auth string)
 type GService struct {
 	done           *chan struct{}
 	interrupt      chan os.Signal
 	receiveRequest chan *gBase.Payload
 	Logger         *logger.Logger
-	rawcb             CallbackRequest
 	cb CallbackApiRequest
 	SvName         string `default:"Service"`
 
@@ -66,54 +61,62 @@ func (p *GService)runner(){
 				break loop
 			case j := <- p.receiveRequest:
 				if p.cb != nil {
-					request := &api.Request{}
 					chreply := make(chan *api.Reply)
-					if j.Request.PayloadType == uint32(gBase.ContextType_BIN){ /// bin to ptoto
-						if err := proto.Unmarshal(j.Request.BinRequest, request); err != nil {
-							p.LogError("Lỗi đọc data  body = [%v]", err.Error())
-							j.ChResult <- &gBase.Result{Status: int(api.ResultType_REQUEST_INVALID), Reply: &api.Reply{Status: uint32(api.ResultType_REQUEST_INVALID)}}
-							goto loop
-						}
-					}else if j.Request.PayloadType == uint32(gBase.ContextType_JSON){ /// json to proto
-						if err := jsonpb.UnmarshalString(string(j.Request.BinRequest), request); err != nil {
-							p.LogError("Lỗi đọc data json body = [%v]", err.Error())
-							goto loop
-						}
-					}else{ // request copy
-						request = j.Request
-					}
-
-					p.cb(request,chreply,j.V_Authorization)
+					p.cb(j.Request,chreply,j.V_Authorization)
 					reply := <- chreply
-
 					if(reply.Status >= 1000){
 						reply.Msg = api.ResultType(reply.Status).String()
 					}
-					//convert reply to json or binary
-					if j.Request.PayloadType == uint32(gBase.ContextType_BIN){
-						b, err := proto.Marshal(reply)
-						if err != nil {
-							j.ChResult <- &gBase.Result{Status: int(api.ResultType_INTERNAL_SERVER_ERROR), Reply: &api.Reply{Status: uint32(api.ResultType_INTERNAL_SERVER_ERROR),Msg: "INTERNAL_SERVER_ERROR"}}
-							goto loop
-						}
-						j.ChResult <- &gBase.Result{Status: int(reply.Status), Reply: reply,ReplyData: b,ContextType: gBase.ContextType(j.Request.PayloadType)}
-					}else if j.Request.PayloadType == uint32(gBase.ContextType_JSON){
-						jsonBytes, err := protojson.Marshal(reply)
-						if err != nil {
-							j.ChResult <- &gBase.Result{Status: int(api.ResultType_INTERNAL_SERVER_ERROR), Reply: &api.Reply{Status: uint32(api.ResultType_INTERNAL_SERVER_ERROR)}}
-							goto loop
-						}
-						j.ChResult <- &gBase.Result{Status: int(reply.Status), Reply: reply,ReplyData: jsonBytes,ContextType: gBase.ContextType(j.Request.PayloadType)}
-					}else if j.Request.PayloadType == uint32(gBase.ContextType_PROTO){ // return reply only
-						j.ChResult <- &gBase.Result{Status: int(reply.Status), Reply: reply,ContextType: gBase.ContextType(j.Request.PayloadType)}
-					}else{
-						j.ChResult <- &gBase.Result{Status: int(api.ResultType_STRANGE_REQUEST), Reply: &api.Reply{Status: uint32(api.ResultType_STRANGE_REQUEST),Msg: "STRANGE_REQUEST"},ContextType: gBase.ContextType(j.Request.PayloadType)}
-					}
-				}else if p.rawcb != nil {
-					p.rawcb(j) // thường sử dụng cho gateway vì ko đụng chạm gì đến request mà chuyển tiếp trực tiếp
-				} else {
+				}else{
 					j.ChResult <- &gBase.Result{Status: int(api.ResultType_STRANGE_REQUEST), Reply: &api.Reply{Status: uint32(api.ResultType_STRANGE_REQUEST),Msg: "STRANGE_REQUEST"},ContextType: gBase.ContextType(j.Request.PayloadType)}
 				}
+				//if p.cb != nil {
+				//	request := j.Request
+				//	chreply := make(chan *api.Reply)
+				//	if request.PayloadType == uint32(gBase.ContextType_BIN){ /// bin to ptoto
+				//		if err := proto.Unmarshal(j.Request.BinRequest, request); err != nil {
+				//			p.LogError("Lỗi đọc data  body = [%v]", err.Error())
+				//			j.ChResult <- &gBase.Result{Status: int(api.ResultType_REQUEST_INVALID), Reply: &api.Reply{Status: uint32(api.ResultType_REQUEST_INVALID)}}
+				//			goto loop
+				//		}
+				//	}else if request.PayloadType == uint32(gBase.ContextType_JSON){ /// json to proto
+				//		if err := jsonpb.UnmarshalString(string(j.Request.BinRequest), request); err != nil {
+				//			p.LogError("Lỗi đọc data json body = [%v]", err.Error())
+				//			goto loop
+				//		}
+				//	}else{ // request copy
+				//		request = j.Request
+				//	}
+				//
+				//	p.cb(request,chreply,j.V_Authorization)
+				//	reply := <- chreply
+				//
+				//	if(reply.Status >= 1000){
+				//		reply.Msg = api.ResultType(reply.Status).String()
+				//	}
+				//	//convert reply to json or binary
+				//	if j.Request.PayloadType == uint32(gBase.ContextType_BIN){
+				//		b, err := proto.Marshal(reply)
+				//		if err != nil {
+				//			j.ChResult <- &gBase.Result{Status: int(api.ResultType_INTERNAL_SERVER_ERROR), Reply: &api.Reply{Status: uint32(api.ResultType_INTERNAL_SERVER_ERROR),Msg: "INTERNAL_SERVER_ERROR"}}
+				//			goto loop
+				//		}
+				//		j.ChResult <- &gBase.Result{Status: int(reply.Status), Reply: reply,ReplyData: b,ContextType: gBase.ContextType(j.Request.PayloadType)}
+				//	}else if j.Request.PayloadType == uint32(gBase.ContextType_JSON){
+				//		jsonBytes, err := protojson.Marshal(reply)
+				//		if err != nil {
+				//			j.ChResult <- &gBase.Result{Status: int(api.ResultType_INTERNAL_SERVER_ERROR), Reply: &api.Reply{Status: uint32(api.ResultType_INTERNAL_SERVER_ERROR)}}
+				//			goto loop
+				//		}
+				//		j.ChResult <- &gBase.Result{Status: int(reply.Status), Reply: reply,ReplyData: jsonBytes,ContextType: gBase.ContextType(j.Request.PayloadType)}
+				//	}else if j.Request.PayloadType == uint32(gBase.ContextType_PROTO){ // return reply only
+				//		j.ChResult <- &gBase.Result{Status: int(reply.Status), Reply: reply,ContextType: gBase.ContextType(j.Request.PayloadType)}
+				//	}else{
+				//		j.ChResult <- &gBase.Result{Status: int(api.ResultType_STRANGE_REQUEST), Reply: &api.Reply{Status: uint32(api.ResultType_STRANGE_REQUEST),Msg: "STRANGE_REQUEST"},ContextType: gBase.ContextType(j.Request.PayloadType)}
+				//	}
+				//} else {
+				//	j.ChResult <- &gBase.Result{Status: int(api.ResultType_STRANGE_REQUEST), Reply: &api.Reply{Status: uint32(api.ResultType_STRANGE_REQUEST),Msg: "STRANGE_REQUEST"},ContextType: gBase.ContextType(j.Request.PayloadType)}
+				//}
 			}
 		}
 }
@@ -160,12 +163,6 @@ func (p *GService) StartListenAndReceiveRequest() chan struct{} {
 	return *p.done
 }
 
-// RegisterHandlerRawRequest sử dụng khi muốn service call raw request từ server
-func (p *GService) RegisterHandlerRawRequest(request CallbackRequest) {
-	p.rawcb = request
-}
-
-// RegisterHandlerRequest sử dụng khi muốn service chuyển đổi payload từ raw sang api.request
 func (p *GService) RegisterHandlerRequest(request CallbackApiRequest) {
 	p.cb = request
 }

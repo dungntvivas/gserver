@@ -86,8 +86,6 @@ func (p *GRPCServer) SendRequest(ctx context.Context, request *api.Request) (*ap
 		Msg:    "OK",
 		Status: 0,
 	}
-	request.PayloadType = uint32(gBase.ContextType_PROTO)
-	request.Protocol = uint32(gBase.RequestProtocol_GRPC)
 	// send data to handler
 	p.HandlerRequest(&gBase.Payload{Request: request, ChResult: result,V_Authorization: request.Session.SessionId})
 	// wait for return data
