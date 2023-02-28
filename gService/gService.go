@@ -13,7 +13,7 @@ import (
 )
 
 type CallbackRequest func(request *api.Request,v_auth string,reply chan *api.Reply)
-type gService struct {
+type GService struct {
 	done           chan struct{}
 	interrupt      chan os.Signal
 	receiveRequest chan *gBase.Payload
@@ -25,11 +25,11 @@ type gService struct {
 	grpc_server *gRPC.GRPCServer
 }
 
-func New(_log *logger.Logger, configs ...gBase.ConfigOption) (*gService,int) {
+func New(_log *logger.Logger, configs ...gBase.ConfigOption) (*GService,int) {
 	if _log == nil {
 		return nil,-1
 	}
-	p := &gService{Logger: _log}
+	p := &GService{Logger: _log}
 	p.done = make(chan struct{})
 	p.receiveRequest = make(chan *gBase.Payload, 100)
 	p.interrupt = make(chan os.Signal, 1)
@@ -48,11 +48,11 @@ func New(_log *logger.Logger, configs ...gBase.ConfigOption) (*gService,int) {
 
 	return p,0
 }
-func (p *gService) Wait() {
+func (p *GService) Wait() {
 	<-p.done
 }
 
-func (p *gService) miniWorker() {
+func (p *GService) miniWorker() {
 	for j := range p.receiveRequest {
 		if p.cb != nil {
              chrep := make(chan *api.Reply)
@@ -65,7 +65,7 @@ func (p *gService) miniWorker() {
 	}
 }
 
-func (p *gService) StartListenAndReceiveRequest() chan struct{} {
+func (p *GService) StartListenAndReceiveRequest() chan struct{} {
 
 	if p.http_server != nil {
 		p.http_server.Serve()
@@ -103,16 +103,16 @@ func (p *gService) StartListenAndReceiveRequest() chan struct{} {
 	return p.done
 }
 
-func (p *gService) RegisterHandler(request CallbackRequest) {
+func (p *GService) RegisterHandler(request CallbackRequest) {
 	p.cb = request
 }
 
-func (p *gService) LogInfo(format string, args ...interface{}) {
+func (p *GService) LogInfo(format string, args ...interface{}) {
 	p.Logger.Log(logger.Info, "["+p.SvName+"] "+format, args...)
 }
-func (p *gService) LogDebug(format string, args ...interface{}) {
+func (p *GService) LogDebug(format string, args ...interface{}) {
 	p.Logger.Log(logger.Debug, "["+p.SvName+"] "+format, args...)
 }
-func (p *gService) LogError(format string, args ...interface{}) {
+func (p *GService) LogError(format string, args ...interface{}) {
 	p.Logger.Log(logger.Error, "["+p.SvName+"] "+format, args...)
 }
