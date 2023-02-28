@@ -95,12 +95,12 @@ func (p *GService)runner(){
 					}else if j.Request.PayloadType == uint32(gBase.ContextType_PROTO){ // return reply only
 						j.ChResult <- &gBase.Result{Status: int(reply.Status), Reply: reply,ContextType: gBase.ContextType(j.Request.PayloadType)}
 					}else{
-						j.ChResult <- &gBase.Result{Status: int(api.ResultType_STRANGE_REQUEST), Reply: &api.Reply{Status: uint32(api.ResultType_STRANGE_REQUEST),Msg: "STRANGE_REQUEST"}}
+						j.ChResult <- &gBase.Result{Status: int(api.ResultType_STRANGE_REQUEST), Reply: &api.Reply{Status: uint32(api.ResultType_STRANGE_REQUEST),Msg: "STRANGE_REQUEST"},ContextType: gBase.ContextType(j.Request.PayloadType)}
 					}
 				}else if p.rawcb != nil {
 					p.rawcb(j) // thường sử dụng cho gateway vì ko đụng chạm gì đến request mà chuyển tiếp trực tiếp
 				} else {
-					j.ChResult <- &gBase.Result{Status: int(api.ResultType_STRANGE_REQUEST), Reply: &api.Reply{Status: uint32(api.ResultType_STRANGE_REQUEST),Msg: "STRANGE_REQUEST"}}
+					j.ChResult <- &gBase.Result{Status: int(api.ResultType_STRANGE_REQUEST), Reply: &api.Reply{Status: uint32(api.ResultType_STRANGE_REQUEST),Msg: "STRANGE_REQUEST"},ContextType: gBase.ContextType(j.Request.PayloadType)}
 				}
 			}
 		}

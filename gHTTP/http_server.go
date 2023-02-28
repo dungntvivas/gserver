@@ -110,20 +110,24 @@ func (p *HTTPServer) onReceiveRequest(ctx *gin.Context) {
 	bindata, err = io.ReadAll(ctx.Request.Body)
 	if err != nil {
 		p.LogError("Error read request body %v", err.Error())
+		status = http.StatusBadRequest
 		goto on_return
 	}
 	request.BinRequest = bindata
-
-
 	// send data to handler
-
 	p.HandlerRequest(&gBase.Payload{Request: request, ChResult: result,V_Authorization: vAuthorization})
 	// wait for return data
 	res = *<-result
 on_return:
 
 	if res.Status != 0 {
-		status = http.StatusBadRequest
+		if(res.Status == int(api.ResultType_INTERNAL_SERVER_ERROR)){
+			status = http.StatusInternalServerError
+		}else if(res.Status == int(api.ResultType_SESSION_EXPIRE)){
+			status = http.StatusForbidden
+		}else if(res.Status == int(api.ResultType_SESSION_INVALID)){
+			status = http.StatusForbidden
+		}
 	}
 	ctx.Data(status, contenxtType, res.ReplyData)
 }
