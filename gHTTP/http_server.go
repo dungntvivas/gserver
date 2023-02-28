@@ -129,5 +129,6 @@ on_return:
 			status = http.StatusForbidden
 		}
 	}
+	p.LogDebug("%v",res)
 	ctx.Data(status, contenxtType, res.ReplyData)
 }

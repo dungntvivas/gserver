@@ -67,8 +67,24 @@ func (p *GService)runner(){
 					if(reply.Status >= 1000){
 						reply.Msg = api.ResultType(reply.Status).String()
 					}
+					if j.Request.PayloadType == uint32(gBase.ContextType_JSON) {
+						// convert reply to json data
+					}
+					j.ChResult <- &gBase.Result{
+						Status: int(reply.Status),
+						ContextType: gBase.ContextType(j.Request.PayloadType),
+						Reply: reply,
+					}
+
 				}else{
-					j.ChResult <- &gBase.Result{Status: int(api.ResultType_STRANGE_REQUEST), Reply: &api.Reply{Status: uint32(api.ResultType_STRANGE_REQUEST),Msg: "STRANGE_REQUEST"},ContextType: gBase.ContextType(j.Request.PayloadType)}
+					j.ChResult <- &gBase.Result{
+						Status: int(api.ResultType_STRANGE_REQUEST),
+						ContextType: gBase.ContextType(j.Request.PayloadType),
+						Reply: &api.Reply{
+							Status: uint32(api.ResultType_STRANGE_REQUEST),
+							Msg: "STRANGE_REQUEST",
+						},
+					}
 				}
 				//if p.cb != nil {
 				//	request := j.Request
