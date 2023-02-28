@@ -88,9 +88,8 @@ func (p *GService) StartListenAndReceiveRequest() chan struct{} {
 	}
 	close(p.receiveRequest)
 	*p.done <- struct{}{}
-}()
 
-return *p.done
+	return *p.done
 }
 
 func (p *GService) RegisterHandler(request CallbackRequest) {
