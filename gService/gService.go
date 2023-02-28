@@ -141,9 +141,7 @@ func (p *GService) StartListenAndReceiveRequest() chan struct{} {
 			p.grpc_server.Close()
 		}
 		close(p.receiveRequest)
-		*p.done <- struct{}{}
-
-
+		close(*p.done)
 	}()
 
 
