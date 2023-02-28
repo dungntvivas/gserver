@@ -14,7 +14,7 @@ import (
 )
 
 type CallbackRequest func(*gBase.Payload)
-type CallbackApiRequest func(request *api.Request,reply chan *api.Reply,v_auth string) chan int
+type CallbackApiRequest func(request *api.Request,reply chan *api.Reply,v_auth string)
 type GService struct {
 	done           *chan struct{}
 	interrupt      chan os.Signal
@@ -23,6 +23,8 @@ type GService struct {
 	rawcb             CallbackRequest
 	cb CallbackApiRequest
 	SvName         string `default:"Service"`
+
+
 
 	http_server *gHTTP.HTTPServer
 	grpc_server *gRPC.GRPCServer
