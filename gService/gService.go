@@ -2,19 +2,18 @@ package gService
 
 import (
 	"gitlab.vivas.vn/go/grpc_api/api"
-	"os"
-	"os/signal"
-	"runtime"
-
 	"gitlab.vivas.vn/go/gserver/gBase"
 	"gitlab.vivas.vn/go/gserver/gHTTP"
 	"gitlab.vivas.vn/go/gserver/gRPC"
 	"gitlab.vivas.vn/go/internal/logger"
+	"os"
+	"os/signal"
+	"runtime"
 )
 
 type CallbackRequest func(request *api.Request,v_auth string,reply chan *api.Reply)
 type GService struct {
-	done           chan struct{}
+	done           *chan struct{}
 	interrupt      chan os.Signal
 	receiveRequest chan *gBase.Payload
 	Logger         *logger.Logger
@@ -25,12 +24,12 @@ type GService struct {
 	grpc_server *gRPC.GRPCServer
 }
 
-func New(_log *logger.Logger, configs ...gBase.ConfigOption) (*GService,int) {
+func New(_log *logger.Logger,_done *chan struct{}, configs ...gBase.ConfigOption) (*GService,int) {
 	if _log == nil {
 		return nil,-1
 	}
 	p := &GService{Logger: _log}
-	p.done = make(chan struct{})
+	p.done = _done
 	p.receiveRequest = make(chan *gBase.Payload, 100)
 	p.interrupt = make(chan os.Signal, 1)
 	signal.Notify(p.interrupt, os.Interrupt)
@@ -49,7 +48,7 @@ func New(_log *logger.Logger, configs ...gBase.ConfigOption) (*GService,int) {
 	return p,0
 }
 func (p *GService) Wait() {
-	<-p.done
+	<-*p.done
 }
 
 func (p *GService) miniWorker() {
@@ -81,7 +80,7 @@ func (p *GService) StartListenAndReceiveRequest() chan struct{} {
 	loop:
 		for {
 			select {
-			case <-p.done:
+			case <-*p.done:
 				break loop
 			case <-p.interrupt:
 				p.LogInfo("shutting down gracefully")
@@ -97,10 +96,10 @@ func (p *GService) StartListenAndReceiveRequest() chan struct{} {
 			p.grpc_server.Close()
 		}
 		close(p.receiveRequest)
-		p.done <- struct{}{}
+		*p.done <- struct{}{}
 	}()
 
-	return p.done
+	return *p.done
 }
 
 func (p *GService) RegisterHandler(request CallbackRequest) {
