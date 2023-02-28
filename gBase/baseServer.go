@@ -44,7 +44,30 @@ var DefaultHttpConfigOption = ConfigOption{
 	Protocol:   RequestProtocol_HTTP,
 	ServerName: "HTTP",
 }
-
+var DefaultGrpcConfigOption = ConfigOption{
+	Addr:       ":44223",
+	Tls:        TLS{IsTLS: false},
+	Protocol:   RequestProtocol_GRPC,
+	ServerName: "HTTP",
+}
+var DefaultTcpSocketConfigOption = ConfigOption{
+	Addr:       ":44224",
+	Tls:        TLS{IsTLS: false},
+	Protocol:   RequestProtocol_TCP,
+	ServerName: "TCP",
+}
+var DefaultWebSocketConfigOption = ConfigOption{
+	Addr:       ":44225",
+	Tls:        TLS{IsTLS: false},
+	Protocol:   RequestProtocol_WS,
+	ServerName: "Websocket",
+}
+var DefaultUdpSocketConfigOption = ConfigOption{
+	Addr:       ":44225",
+	Tls:        TLS{IsTLS: false},
+	Protocol:   RequestProtocol_UDP,
+	ServerName: "UDP",
+}
 
 
 type GServer struct {

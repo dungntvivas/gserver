@@ -1,6 +1,7 @@
 package gService
 
 import (
+	"gitlab.vivas.vn/go/grpc_api/api"
 	"os"
 	"os/signal"
 	"runtime"
@@ -11,7 +12,7 @@ import (
 	"gitlab.vivas.vn/go/internal/logger"
 )
 
-type CallbackRequest func(*gBase.Payload)
+type CallbackRequest func(request *api.Request,v_auth string,reply chan *api.Reply)
 type gService struct {
 	done           chan struct{}
 	interrupt      chan os.Signal
@@ -48,7 +49,10 @@ func (p *gService) Wait() {
 func (p *gService) miniWorker() {
 	for j := range p.receiveRequest {
 		if p.cb != nil {
-			p.cb(j)
+             chrep := make(chan *api.Reply)
+             p.cb(j.Request,j.V_Authorization,chrep)
+             rep := <- chrep
+             j.ChResult <- &gBase.Result{Status: int(rep.Status)}
 		} else {
 			j.ChResult <- &gBase.Result{Status: 1010} // request lạ
 		}
@@ -64,7 +68,7 @@ func (p *gService) StartListenAndReceiveRequest() chan struct{} {
 	if p.grpc_server != nil {
 		p.grpc_server.Serve()
 	}
-	for num := 0; num < runtime.NumCPU(); num++ {
+	for num := 0; num < runtime.NumCPU()*2; num++ {
 		go p.miniWorker()
 	}
 	go func() {
@@ -78,7 +82,6 @@ func (p *gService) StartListenAndReceiveRequest() chan struct{} {
 				break loop
 			}
 		}
-
 		p.LogInfo("End Service")
 
 		if p.http_server != nil {
@@ -89,7 +92,6 @@ func (p *gService) StartListenAndReceiveRequest() chan struct{} {
 		}
 		close(p.receiveRequest)
 		p.done <- struct{}{}
-
 	}()
 
 	return p.done
