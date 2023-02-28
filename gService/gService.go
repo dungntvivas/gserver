@@ -1,6 +1,7 @@
 package gService
 
 import (
+	"github.com/golang/protobuf/jsonpb"
 	"gitlab.vivas.vn/go/grpc_api/api"
 	"gitlab.vivas.vn/go/gserver/gBase"
 	"gitlab.vivas.vn/go/gserver/gHTTP"
@@ -65,13 +66,24 @@ func (p *GService)runner(){
 				break loop
 			case j := <- p.receiveRequest:
 				if p.cb != nil {
-					request := api.Request{}
+					request := &api.Request{}
 					chreply := make(chan *api.Reply)
-					if err := proto.Unmarshal(j.Request.BinRequest, &request); err != nil {
-						j.ChResult <- &gBase.Result{Status: int(api.ResultType_REQUEST_INVALID), Reply: &api.Reply{Status: uint32(api.ResultType_REQUEST_INVALID)}}
-						goto loop
+					if j.Request.PayloadType == uint32(gBase.ContextType_BIN){ /// bin to ptoto
+						if err := proto.Unmarshal(j.Request.BinRequest, request); err != nil {
+							p.LogError("Lỗi đọc data  body = [%v]", err.Error())
+							j.ChResult <- &gBase.Result{Status: int(api.ResultType_REQUEST_INVALID), Reply: &api.Reply{Status: uint32(api.ResultType_REQUEST_INVALID)}}
+							goto loop
+						}
+					}else if j.Request.PayloadType == uint32(gBase.ContextType_JSON){ /// json to proto
+						if err := jsonpb.UnmarshalString(string(j.Request.BinRequest), request); err != nil {
+							p.LogError("Lỗi đọc data json body = [%v]", err.Error())
+							goto loop
+						}
+					}else{ // request copy
+						request = j.Request
 					}
-					p.cb(&request,chreply,j.V_Authorization)
+
+					p.cb(request,chreply,j.V_Authorization)
 					reply := <- chreply
 
 					if(reply.Status >= 1000){
