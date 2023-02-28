@@ -56,7 +56,7 @@ func (p *gService) miniWorker() {
 	for j := range p.receiveRequest {
 		if p.cb != nil {
              chrep := make(chan *api.Reply)
-             p.cb(j.Request,j.V_Authorization,chrep)
+             go p.cb(j.Request,j.V_Authorization,chrep)
              rep := <- chrep
              j.ChResult <- &gBase.Result{Status: int(rep.Status)}
 		} else {
