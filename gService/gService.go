@@ -25,7 +25,10 @@ type gService struct {
 	grpc_server *gRPC.GRPCServer
 }
 
-func New(_log *logger.Logger, configs ...gBase.ConfigOption) *gService {
+func New(_log *logger.Logger, configs ...gBase.ConfigOption) (*gService,int) {
+	if _log == nil {
+		return nil,-1
+	}
 	p := &gService{Logger: _log}
 	p.done = make(chan struct{})
 	p.receiveRequest = make(chan *gBase.Payload, 100)
@@ -34,13 +37,16 @@ func New(_log *logger.Logger, configs ...gBase.ConfigOption) *gService {
 
 	for _, cf := range configs {
 		if cf.Protocol == gBase.RequestProtocol_HTTP { // init http server listen
+			cf.Logger = _log
 			p.http_server = gHTTP.New(cf, p.receiveRequest)
 		} else if cf.Protocol == gBase.RequestProtocol_GRPC {
+			cf.Logger = _log
 			p.grpc_server = gRPC.New(cf, p.receiveRequest)
 		}
+		// other service
 	}
 
-	return p
+	return p,0
 }
 func (p *gService) Wait() {
 	<-p.done
