@@ -77,17 +77,21 @@ func (p *GService) StartListenAndReceiveRequest() chan struct{} {
 				}
 			}
 		}
-	}()
-	p.LogInfo("End Service")
 
-	if p.http_server != nil {
-		p.http_server.Close()
-	}
-	if p.grpc_server != nil {
-		p.grpc_server.Close()
-	}
-	close(p.receiveRequest)
-	*p.done <- struct{}{}
+		p.LogInfo("End Service")
+
+		if p.http_server != nil {
+			p.http_server.Close()
+		}
+		if p.grpc_server != nil {
+			p.grpc_server.Close()
+		}
+		close(p.receiveRequest)
+		*p.done <- struct{}{}
+
+
+	}()
+
 
 	return *p.done
 }
