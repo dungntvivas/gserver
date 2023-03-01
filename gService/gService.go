@@ -31,7 +31,8 @@ func NewService(SvName string,_log *logger.Logger, configs ...gBase.ConfigOption
 		Logger: _log,
 		Done: make(chan struct{}),
 		interrupt: make(chan os.Signal, 1),
-		receiveRequest: make(chan *gBase.Payload,100),
+		receiveRequest: make(chan *gBase.Payload,runtime.NumCPU()*2),
+		SvName: SvName,
 	}
 	signal.Notify(p.interrupt, os.Interrupt)
 	// config server http grpc ...
@@ -109,7 +110,6 @@ loop:
 		case <-p.Done:
 			break loop
 		case req := <-p.receiveRequest:
-			p.LogInfo("W %d Receive request %d group %d",id,req.Request.Type,req.Request.Group)
 			// call processRequest
 			p.processRequest(req)
 		}
@@ -151,7 +151,6 @@ func (p *Service)processRequest(payload *gBase.Payload){
 
 
 on_reply:{
-	p.LogDebug("Reply Msg")
 	var dataByte []byte
 	if(reply.Status >= 1000){
 		reply.Msg = api.ResultType(reply.Status).String()
