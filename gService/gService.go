@@ -13,7 +13,7 @@ import (
 	"runtime"
 )
 
-type CallbackApiRequest func(request *api.Request,reply chan *api.Reply)
+type CallbackApiRequest func(request *api.Request,reply *api.Reply) int
 type GService struct {
 	done           *chan struct{}
 	interrupt      chan os.Signal
@@ -63,7 +63,7 @@ func (p *GService)runner(){
 				break loop
 			case j := <- p.receiveRequest:
 				if p.cb != nil {
-					chreply := make(chan *api.Reply)
+					reply := api.Reply{}
 					p.LogDebug("Service Send Request")
 					// convert request if need
 					if j.Request.PayloadType == uint32(gBase.PayloadType_JSON) {
@@ -87,10 +87,7 @@ func (p *GService)runner(){
 					}
 
 					p.LogDebug("%v",j.Request)
-
-
-					p.cb(j.Request,chreply)
-					reply := <- chreply
+					p.cb(j.Request,&reply)
 					p.LogDebug("Service Reply")
 					if(reply.Status >= 1000){
 						reply.Msg = api.ResultType(reply.Status).String()
