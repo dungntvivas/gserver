@@ -114,8 +114,9 @@ func (p *HTTPServer) onReceiveRequest(ctx *gin.Context) {
 		goto on_return
 	}
 	request.BinRequest = bindata
+	request.Session = &api.Session{SessionId: vAuthorization}
 	// send data to handler
-	p.HandlerRequest(&gBase.Payload{Request: request, ChResult: result,V_Authorization: vAuthorization})
+	p.HandlerRequest(&gBase.Payload{Request: request, ChResult: result})
 	// wait for return data
 	res = *<-result
 on_return:

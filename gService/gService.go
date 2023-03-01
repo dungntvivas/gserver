@@ -88,6 +88,7 @@ func (p *GService)runner(){
 
 					p.LogDebug("%v",j.Request)
 
+
 					p.cb(j.Request,chreply)
 					reply := <- chreply
 					p.LogDebug("Service Reply")
