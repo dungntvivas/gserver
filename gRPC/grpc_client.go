@@ -33,9 +33,9 @@ func NewClientConn(scheme string, service_name string, addrs ...string) (api.API
 
 	options := []grpc.DialOption{
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
-		grpc.WithBlock(),
 		grpc.WithResolvers(r),
 		grpc.WithDefaultServiceConfig(serviceConfig),
+		grpc.WithTimeout(time.Second * 2),
 	}
 
 	conn, err := grpc.Dial(address, options...)
