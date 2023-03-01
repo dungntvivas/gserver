@@ -88,11 +88,11 @@ func (p *HTTPServer) onReceiveRequest(ctx *gin.Context) {
 	defer close(result)
 	contenxtType := ctx.Request.Header.Get("Content-Type")
 	vAuthorization := ctx.Request.Header.Get("V-Authorization")
-	ctType := gBase.ContextType_JSON
+	ctType := gBase.PayloadType_JSON
 	var bindata []byte
 	var err error
 	if contenxtType == "application/octet-stream" {
-		ctType = gBase.ContextType_BIN
+		ctType = gBase.PayloadType_BIN
 	}
 	request := &api.Request{
 		Protocol:    uint32(gBase.RequestProtocol_HTTP),

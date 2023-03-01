@@ -67,19 +67,19 @@ func (p *GService)runner(){
 					if(reply.Status >= 1000){
 						reply.Msg = api.ResultType(reply.Status).String()
 					}
-					if j.Request.PayloadType == uint32(gBase.ContextType_JSON) {
+					if j.Request.PayloadType == uint32(gBase.PayloadType_JSON) {
 						// convert reply to json data
 					}
 					j.ChResult <- &gBase.Result{
 						Status: int(reply.Status),
-						ContextType: gBase.ContextType(j.Request.PayloadType),
+						ContextType: gBase.PayloadType(j.Request.PayloadType),
 						Reply: reply,
 					}
 
 				}else{
 					j.ChResult <- &gBase.Result{
 						Status: int(api.ResultType_STRANGE_REQUEST),
-						ContextType: gBase.ContextType(j.Request.PayloadType),
+						ContextType: gBase.PayloadType(j.Request.PayloadType),
 						Reply: &api.Reply{
 							Status: uint32(api.ResultType_STRANGE_REQUEST),
 							Msg: "STRANGE_REQUEST",
@@ -89,13 +89,13 @@ func (p *GService)runner(){
 				//if p.cb != nil {
 				//	request := j.Request
 				//	chreply := make(chan *api.Reply)
-				//	if request.PayloadType == uint32(gBase.ContextType_BIN){ /// bin to ptoto
+				//	if request.PayloadType == uint32(gBase.PayloadType_BIN){ /// bin to ptoto
 				//		if err := proto.Unmarshal(j.Request.BinRequest, request); err != nil {
 				//			p.LogError("Lỗi đọc data  body = [%v]", err.Error())
 				//			j.ChResult <- &gBase.Result{Status: int(api.ResultType_REQUEST_INVALID), Reply: &api.Reply{Status: uint32(api.ResultType_REQUEST_INVALID)}}
 				//			goto loop
 				//		}
-				//	}else if request.PayloadType == uint32(gBase.ContextType_JSON){ /// json to proto
+				//	}else if request.PayloadType == uint32(gBase.PayloadType_JSON){ /// json to proto
 				//		if err := jsonpb.UnmarshalString(string(j.Request.BinRequest), request); err != nil {
 				//			p.LogError("Lỗi đọc data json body = [%v]", err.Error())
 				//			goto loop
@@ -111,27 +111,27 @@ func (p *GService)runner(){
 				//		reply.Msg = api.ResultType(reply.Status).String()
 				//	}
 				//	//convert reply to json or binary
-				//	if j.Request.PayloadType == uint32(gBase.ContextType_BIN){
+				//	if j.Request.PayloadType == uint32(gBase.PayloadType_BIN){
 				//		b, err := proto.Marshal(reply)
 				//		if err != nil {
 				//			j.ChResult <- &gBase.Result{Status: int(api.ResultType_INTERNAL_SERVER_ERROR), Reply: &api.Reply{Status: uint32(api.ResultType_INTERNAL_SERVER_ERROR),Msg: "INTERNAL_SERVER_ERROR"}}
 				//			goto loop
 				//		}
-				//		j.ChResult <- &gBase.Result{Status: int(reply.Status), Reply: reply,ReplyData: b,ContextType: gBase.ContextType(j.Request.PayloadType)}
-				//	}else if j.Request.PayloadType == uint32(gBase.ContextType_JSON){
+				//		j.ChResult <- &gBase.Result{Status: int(reply.Status), Reply: reply,ReplyData: b,PayloadType: gBase.PayloadType(j.Request.PayloadType)}
+				//	}else if j.Request.PayloadType == uint32(gBase.PayloadType_JSON){
 				//		jsonBytes, err := protojson.Marshal(reply)
 				//		if err != nil {
 				//			j.ChResult <- &gBase.Result{Status: int(api.ResultType_INTERNAL_SERVER_ERROR), Reply: &api.Reply{Status: uint32(api.ResultType_INTERNAL_SERVER_ERROR)}}
 				//			goto loop
 				//		}
-				//		j.ChResult <- &gBase.Result{Status: int(reply.Status), Reply: reply,ReplyData: jsonBytes,ContextType: gBase.ContextType(j.Request.PayloadType)}
-				//	}else if j.Request.PayloadType == uint32(gBase.ContextType_PROTO){ // return reply only
-				//		j.ChResult <- &gBase.Result{Status: int(reply.Status), Reply: reply,ContextType: gBase.ContextType(j.Request.PayloadType)}
+				//		j.ChResult <- &gBase.Result{Status: int(reply.Status), Reply: reply,ReplyData: jsonBytes,PayloadType: gBase.PayloadType(j.Request.PayloadType)}
+				//	}else if j.Request.PayloadType == uint32(gBase.PayloadType_PROTO){ // return reply only
+				//		j.ChResult <- &gBase.Result{Status: int(reply.Status), Reply: reply,PayloadType: gBase.PayloadType(j.Request.PayloadType)}
 				//	}else{
-				//		j.ChResult <- &gBase.Result{Status: int(api.ResultType_STRANGE_REQUEST), Reply: &api.Reply{Status: uint32(api.ResultType_STRANGE_REQUEST),Msg: "STRANGE_REQUEST"},ContextType: gBase.ContextType(j.Request.PayloadType)}
+				//		j.ChResult <- &gBase.Result{Status: int(api.ResultType_STRANGE_REQUEST), Reply: &api.Reply{Status: uint32(api.ResultType_STRANGE_REQUEST),Msg: "STRANGE_REQUEST"},PayloadType: gBase.PayloadType(j.Request.PayloadType)}
 				//	}
 				//} else {
-				//	j.ChResult <- &gBase.Result{Status: int(api.ResultType_STRANGE_REQUEST), Reply: &api.Reply{Status: uint32(api.ResultType_STRANGE_REQUEST),Msg: "STRANGE_REQUEST"},ContextType: gBase.ContextType(j.Request.PayloadType)}
+				//	j.ChResult <- &gBase.Result{Status: int(api.ResultType_STRANGE_REQUEST), Reply: &api.Reply{Status: uint32(api.ResultType_STRANGE_REQUEST),Msg: "STRANGE_REQUEST"},PayloadType: gBase.PayloadType(j.Request.PayloadType)}
 				//}
 			}
 		}
