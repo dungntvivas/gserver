@@ -130,7 +130,7 @@ func (p *Service)discoveryService(payload *gBase.Payload){
 		Msg: "OK",
 	}
 	discovery_reply := api.DiscoveryService_Reply{}
-	p.operator.Range(func(key, value any) bool {
+	p.Operator.Range(func(key, value any) bool {
 		discovery_reply.Types =  append(discovery_reply.Types, key.(uint32))
 		return true
 	})
