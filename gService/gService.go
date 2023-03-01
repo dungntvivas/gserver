@@ -24,7 +24,7 @@ type Service struct {
 	receiveRequest chan *gBase.Payload
 	SvName string
 	cb HandlerRequest
-	operator sync.Map
+	Operator sync.Map
 
 	http_server *gHTTP.HTTPServer
 	grpc_server *gRPC.GRPCServer
