@@ -35,7 +35,33 @@ type TLS struct {
 type Payload struct {
 	ChReply chan *api.Reply
 	Request  *api.Request
+	//
+	connection_id string
 }
+
+type Encryption_Type uint8
+
+const (
+	Encryption_XOR  Encryption_Type = 0x20
+	Encryption_RSA  Encryption_Type = 0x40
+	Encryption_AES  Encryption_Type = 0x60
+	Encryption_NONE Encryption_Type = 0x0
+)
+
+func (s Encryption_Type) String() string {
+	if s == Encryption_NONE {
+		return "Raw"
+	} else if s == Encryption_XOR {
+		return "XOR"
+	} else if s == Encryption_AES {
+		return "AES-CBC-256-PKCS7_PADING"
+	} else if s == Encryption_RSA {
+		return "RSA-1024-PKCS1_PADING"
+	} else {
+		return "Unknown"
+	}
+}
+
 
 type ConfigOption struct {
 	Done       *chan struct{}
@@ -44,6 +70,7 @@ type ConfigOption struct {
 	Tls        TLS
 	ServerName string
 	Protocol   RequestProtocol
+	encodeType Encryption_Type
 }
 
 var DefaultHttpConfigOption = ConfigOption{
@@ -51,30 +78,35 @@ var DefaultHttpConfigOption = ConfigOption{
 	Tls:        TLS{IsTLS: false},
 	Protocol:   RequestProtocol_HTTP,
 	ServerName: "HTTP",
+	encodeType:Encryption_NONE,
 }
 var DefaultGrpcConfigOption = ConfigOption{
 	Addr:       ":44223",
 	Tls:        TLS{IsTLS: false},
 	Protocol:   RequestProtocol_GRPC,
 	ServerName: "HTTP",
+	encodeType:Encryption_NONE,
 }
 var DefaultTcpSocketConfigOption = ConfigOption{
 	Addr:       ":44224",
 	Tls:        TLS{IsTLS: false},
 	Protocol:   RequestProtocol_TCP,
 	ServerName: "TCP",
+	encodeType:Encryption_NONE,
 }
 var DefaultWebSocketConfigOption = ConfigOption{
 	Addr:       ":44225",
 	Tls:        TLS{IsTLS: false},
 	Protocol:   RequestProtocol_WS,
 	ServerName: "Websocket",
+	encodeType:Encryption_NONE,
 }
 var DefaultUdpSocketConfigOption = ConfigOption{
 	Addr:       ":44225",
 	Tls:        TLS{IsTLS: false},
 	Protocol:   RequestProtocol_UDP,
 	ServerName: "UDP",
+	encodeType:Encryption_NONE,
 }
 
 

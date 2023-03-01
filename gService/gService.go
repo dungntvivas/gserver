@@ -8,9 +8,11 @@ import (
 	"gitlab.vivas.vn/go/gserver/gRPC"
 	"gitlab.vivas.vn/go/internal/logger"
 	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/types/known/anypb"
 	"os"
 	"os/signal"
 	"runtime"
+	"sync"
 )
 
 type HandlerRequest func(request *api.Request,reply *api.Reply) uint32
@@ -22,6 +24,7 @@ type Service struct {
 	receiveRequest chan *gBase.Payload
 	SvName string
 	cb HandlerRequest
+	operator sync.Map
 
 	http_server *gHTTP.HTTPServer
 	grpc_server *gRPC.GRPCServer
@@ -111,9 +114,29 @@ loop:
 			break loop
 		case req := <-p.receiveRequest:
 			// call processRequest
-			p.processRequest(req)
+			if(req.Request.Type == 1){
+				// handler discovery service
+				p.discoveryService(req)
+			}else{
+				p.processRequest(req)
+			}
+
 		}
 	}
+}
+func (p *Service)discoveryService(payload *gBase.Payload){
+	reply := &api.Reply{
+		Status: 0,
+		Msg: "OK",
+	}
+	discovery_reply := api.DiscoveryService_Reply{}
+	p.operator.Range(func(key, value any) bool {
+		discovery_reply.Types =  append(discovery_reply.Types, key.(uint32))
+		return true
+	})
+	_discovery_reply, _ := anypb.New(&discovery_reply)
+	reply.Reply = _discovery_reply
+	payload.ChReply <- reply
 }
 func (p *Service)processRequest(payload *gBase.Payload){
 	reply := &api.Reply{
