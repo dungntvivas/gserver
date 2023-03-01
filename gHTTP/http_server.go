@@ -83,8 +83,8 @@ func (p *HTTPServer) Close(){
 func (p *HTTPServer) onReceiveRequest(ctx *gin.Context) {
 	var urlParams RequestID
 	status := http.StatusOK
-	var res gBase.Result
-	result := make(chan *gBase.Result)
+	var res api.Reply
+	result := make(chan *api.Reply)
 	defer close(result)
 	contenxtType := ctx.Request.Header.Get("Content-Type")
 	vAuthorization := ctx.Request.Header.Get("V-Authorization")
@@ -116,20 +116,20 @@ func (p *HTTPServer) onReceiveRequest(ctx *gin.Context) {
 	request.BinRequest = bindata
 	request.Session = &api.Session{SessionId: vAuthorization}
 	// send data to handler
-	p.HandlerRequest(&gBase.Payload{Request: request, ChResult: result})
+	p.HandlerRequest(&gBase.Payload{Request: request, ChReply: result})
 	// wait for return data
 	res = *<-result
 on_return:
 
 	if res.Status != 0 {
-		if(res.Status == int(api.ResultType_INTERNAL_SERVER_ERROR)){
+		if(res.Status == uint32(api.ResultType_INTERNAL_SERVER_ERROR)){
 			status = http.StatusInternalServerError
-		}else if(res.Status == int(api.ResultType_SESSION_EXPIRE)){
+		}else if(res.Status == uint32(api.ResultType_SESSION_EXPIRE)){
 			status = http.StatusForbidden
-		}else if(res.Status == int(api.ResultType_SESSION_INVALID)){
+		}else if(res.Status == uint32(api.ResultType_SESSION_INVALID)){
 			status = http.StatusForbidden
 		}
 	}
 	p.LogDebug("%v",res)
-	ctx.Data(status, contenxtType, res.ReplyData)
+	ctx.Data(status, contenxtType, res.BinReply)
 }

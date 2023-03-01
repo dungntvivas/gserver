@@ -17,6 +17,15 @@ const (
 	RequestProtocol_NONE   RequestProtocol = 0x0
 )
 
+type PayloadType uint8
+
+const (
+	PayloadType_BIN   PayloadType = 0x2
+	PayloadType_JSON  PayloadType = 0x4
+	PayloadType_PROTO PayloadType = 0x8
+	PayloadType_NONE  PayloadType = 0x0
+)
+
 type TLS struct {
 	IsTLS     bool
 	Cert      string
@@ -24,7 +33,7 @@ type TLS struct {
 	H2_Enable bool // sử dụng với server http // grpc default h2
 }
 type Payload struct {
-	ChResult chan *Result
+	ChReply chan *api.Reply
 	Request  *api.Request
 }
 

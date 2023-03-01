@@ -80,27 +80,12 @@ func (p *GRPCServer) Close(){
 }
 
 func (p *GRPCServer) SendRequest(ctx context.Context, request *api.Request) (*api.Reply, error) {
-	result := make(chan *gBase.Result)
-	var res gBase.Result
-	reply := &api.Reply{
-		Msg:    "OK",
-		Status: 0,
-	}
+	chReply := make(chan *api.Reply)
 	// send data to handler
-	p.HandlerRequest(&gBase.Payload{Request: request, ChResult: result})
+	p.HandlerRequest(&gBase.Payload{Request: request, ChReply: chReply})
 	// wait for return data
-	res = *<-result
-	close(result)
-	if res.Status >= 1000 {
-		reply.Status = uint32(res.Status)
-		reply.Msg = api.ResultType(reply.Status).String()
-	} else {
-		if res.Reply.Status != 0 {
-			reply.Msg = res.Reply.Msg
-		}
-		reply.Status = res.Reply.Status
-		reply.Reply = res.Reply.Reply
-	}
-	return reply, nil
+	res := <-chReply
+	close(chReply)
+	return res, nil
 
 }
