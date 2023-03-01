@@ -98,7 +98,7 @@ func (p *GService)runner(){
 					j.ChResult <- &gBase.Result{
 						Status: int(reply.Status),
 						ContextType: gBase.PayloadType(j.Request.PayloadType),
-						Reply: reply,
+						Reply: &reply,
 					}
 
 				}else{
