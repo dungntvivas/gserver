@@ -1,6 +1,8 @@
 package gService
 
 import (
+	"github.com/golang/protobuf/jsonpb"
+	"github.com/golang/protobuf/proto"
 	"gitlab.vivas.vn/go/grpc_api/api"
 	"gitlab.vivas.vn/go/gserver/gBase"
 	"gitlab.vivas.vn/go/gserver/gHTTP"
@@ -11,7 +13,7 @@ import (
 	"runtime"
 )
 
-type CallbackApiRequest func(request *api.Request,reply chan *api.Reply,v_auth string)
+type CallbackApiRequest func(request *api.Request,reply chan *api.Reply)
 type GService struct {
 	done           *chan struct{}
 	interrupt      chan os.Signal
@@ -62,8 +64,33 @@ func (p *GService)runner(){
 			case j := <- p.receiveRequest:
 				if p.cb != nil {
 					chreply := make(chan *api.Reply)
-					p.cb(j.Request,chreply,j.V_Authorization)
+					p.LogDebug("Service Send Request")
+					// convert request if need
+					if j.Request.PayloadType == uint32(gBase.PayloadType_JSON) {
+						var _rq api.Request
+						if err := jsonpb.UnmarshalString(string(j.Request.BinRequest), &_rq);err != nil{
+							p.LogError("Convert Json to Proto Error")
+							p.LogError("%v",err.Error())
+							continue
+						}
+						j.Request.Request = _rq.Request
+						j.Request.BinRequest = nil
+					}else if j.Request.PayloadType == uint32(gBase.PayloadType_BIN){
+						var _rq api.Request
+						if err := proto.Unmarshal(j.Request.BinRequest, &_rq); err != nil {
+							p.LogError("Convert bin to Proto Error")
+							p.LogError("%v",err.Error())
+							continue
+						}
+						j.Request.Request = _rq.Request
+						j.Request.BinRequest = nil
+					}
+
+					p.LogDebug("%v",j.Request)
+
+					p.cb(j.Request,chreply)
 					reply := <- chreply
+					p.LogDebug("Service Reply")
 					if(reply.Status >= 1000){
 						reply.Msg = api.ResultType(reply.Status).String()
 					}

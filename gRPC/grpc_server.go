@@ -87,7 +87,7 @@ func (p *GRPCServer) SendRequest(ctx context.Context, request *api.Request) (*ap
 		Status: 0,
 	}
 	// send data to handler
-	p.HandlerRequest(&gBase.Payload{Request: request, ChResult: result,V_Authorization: request.Session.SessionId})
+	p.HandlerRequest(&gBase.Payload{Request: request, ChResult: result})
 	// wait for return data
 	res = *<-result
 	close(result)
