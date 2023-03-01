@@ -8,6 +8,7 @@ import (
 	"gitlab.vivas.vn/go/gserver/gHTTP"
 	"gitlab.vivas.vn/go/gserver/gRPC"
 	"gitlab.vivas.vn/go/internal/logger"
+	"google.golang.org/protobuf/encoding/protojson"
 	"os"
 	"os/signal"
 	"runtime"
@@ -71,6 +72,14 @@ func (p *GService)runner(){
 						if err := jsonpb.UnmarshalString(string(j.Request.BinRequest), &_rq);err != nil{
 							p.LogError("Convert Json to Proto Error")
 							p.LogError("%v",err.Error())
+							j.ChResult <- &gBase.Result{
+								Status: int(api.ResultType_INTERNAL_SERVER_ERROR),
+								ContextType: gBase.PayloadType(j.Request.PayloadType),
+								Reply: &api.Reply{
+									Status: uint32(api.ResultType_INTERNAL_SERVER_ERROR),
+									Msg: "INTERNAL_SERVER_ERROR",
+								},
+							}
 							continue
 						}
 						j.Request.Request = _rq.Request
@@ -80,6 +89,14 @@ func (p *GService)runner(){
 						if err := proto.Unmarshal(j.Request.BinRequest, &_rq); err != nil {
 							p.LogError("Convert bin to Proto Error")
 							p.LogError("%v",err.Error())
+							j.ChResult <- &gBase.Result{
+								Status: int(api.ResultType_INTERNAL_SERVER_ERROR),
+								ContextType: gBase.PayloadType(j.Request.PayloadType),
+								Reply: &api.Reply{
+									Status: uint32(api.ResultType_INTERNAL_SERVER_ERROR),
+									Msg: "INTERNAL_SERVER_ERROR",
+								},
+							}
 							continue
 						}
 						j.Request.Request = _rq.Request
@@ -94,7 +111,37 @@ func (p *GService)runner(){
 					}
 					if j.Request.PayloadType == uint32(gBase.PayloadType_JSON) {
 						// convert reply to json data
+						jsonBytes, err := protojson.Marshal(&reply)
+						if(err != nil){
+							j.ChResult <- &gBase.Result{
+								Status: int(api.ResultType_INTERNAL_SERVER_ERROR),
+								ContextType: gBase.PayloadType(j.Request.PayloadType),
+								Reply: &api.Reply{
+									Status: uint32(api.ResultType_INTERNAL_SERVER_ERROR),
+									Msg: "INTERNAL_SERVER_ERROR",
+								},
+							}
+							continue
+						}
+						reply.BinReply = jsonBytes
+
+					}else if j.Request.PayloadType == uint32(gBase.PayloadType_BIN) {
+						// convert reply to bin data
+						bByte, err := proto.Marshal(&reply)
+						if(err != nil){
+							j.ChResult <- &gBase.Result{
+								Status: int(api.ResultType_INTERNAL_SERVER_ERROR),
+								ContextType: gBase.PayloadType(j.Request.PayloadType),
+								Reply: &api.Reply{
+									Status: uint32(api.ResultType_INTERNAL_SERVER_ERROR),
+									Msg: "INTERNAL_SERVER_ERROR",
+								},
+							}
+							continue
+						}
+						reply.BinReply = bByte
 					}
+
 					j.ChResult <- &gBase.Result{
 						Status: int(reply.Status),
 						ContextType: gBase.PayloadType(j.Request.PayloadType),
