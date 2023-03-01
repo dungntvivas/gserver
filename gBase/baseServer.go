@@ -14,6 +14,7 @@ const (
 	RequestProtocol_TCP    RequestProtocol = 0x10
 	RequestProtocol_WS     RequestProtocol = 0x20
 	RequestProtocol_UDP    RequestProtocol = 0x40
+	RequestProtocol_UDS    RequestProtocol = 0x80 // Unix Domain Socket ( linux , macos ) only
 	RequestProtocol_NONE   RequestProtocol = 0x0
 )
 

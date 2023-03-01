@@ -33,8 +33,11 @@ func (p *TCPServer) OnBoot(eng gnet.Engine) gnet.Action {
 	p.LogInfo("Listener opened on %s", p.Config.Addr)
 	return gnet.None
 }
-func (p *TCPServer) OnShutdown(eng gnet.Engine) {}
+func (p *TCPServer) OnShutdown(eng gnet.Engine) {
+
+}
 func (p *TCPServer) OnOpen(c gnet.Conn) (out []byte, action gnet.Action) {
+	p. LogInfo ("conn [%v] Open", c.Fd())
 	return
 }
 func (p *TCPServer) OnClose(c gnet.Conn, err error) (action gnet.Action) {
