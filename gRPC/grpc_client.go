@@ -1,79 +1,59 @@
 package gRPC
 
-
 import (
 	"context"
 	"fmt"
-	"gitlab.vivas.vn/go/grpc_api/api"
 	"time"
 
-	"github.com/golang/protobuf/proto"
+	"gitlab.vivas.vn/go/grpc_api/api"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/resolver"
+	"google.golang.org/grpc/resolver/manual"
 )
 
-func MakeAuthRoundRobinConnection(scheme string, service_name string) (*grpc.ClientConn, error) {
-	return grpc.Dial(
-		fmt.Sprintf("%s:///%s", scheme, service_name),
-		grpc.WithDefaultServiceConfig(`{"loadBalancingConfig": [{"round_robin":{}}]}`),
+var serviceConfig = `{
+	"loadBalancingPolicy": "round_robin",
+	"healthCheckConfig": {
+		"serviceName": ""
+	}
+}`
+
+func NewClientConn(scheme string, service_name string, addrs ...string) (api.APIClient, error) {
+	r := manual.NewBuilderWithScheme(scheme)
+	var rAddress []resolver.Address
+	for _, ad := range addrs {
+		rAddress = append(rAddress, resolver.Address{
+			Addr: ad,
+		})
+	}
+	r.InitialState(resolver.State{Addresses: rAddress})
+	address := fmt.Sprintf("%s:///%s", r.Scheme(), service_name)
+
+	options := []grpc.DialOption{
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
-		grpc.WithTimeout(time.Second*5),
-	)
-}
-func CallRpcService(cc *grpc.ClientConn, request *api.Request, reply *api.Reply) error {
-	_cc := api.NewAPIClient(cc)
-	_reply, err := _cc.SendRequest(context.TODO(), request)
-	if err != nil {
-		cc.ResetConnectBackoff()
-		return err
+		grpc.WithBlock(),
+		grpc.WithResolvers(r),
+		grpc.WithDefaultServiceConfig(serviceConfig),
 	}
 
-	_b, err := proto.Marshal(_reply)
+	conn, err := grpc.Dial(address, options...)
+
 	if err != nil {
-		return err
+		return nil, err
 	}
-	err = proto.Unmarshal(_b, reply)
-	if err != nil {
-		return err
-	}
-	return nil
+
+	cc := api.NewAPIClient(conn)
+
+	return cc, nil
 }
 
-/// Phân giải tên miền cho host
-
-type ResolverBuilder struct {
-	SchemeName  string
-	ServiceName string
-	Addrs       []string
-}
-
-func (p *ResolverBuilder) Build(target resolver.Target, cc resolver.ClientConn, opts resolver.BuildOptions) (resolver.Resolver, error) {
-	r := &AddrResolver{
-		target: target,
-		cc:     cc,
-		addrsStore: map[string][]string{
-			p.ServiceName: p.Addrs,
-		},
+func MakeRpcRequest(cc api.APIClient, request *api.Request) (*api.Reply, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	r, err := cc.SendRequest(ctx, request)
+	if err != nil {
+		return nil, err
 	}
-	r.start()
 	return r, nil
 }
-func (p *ResolverBuilder) Scheme() string { return p.SchemeName }
-
-type AddrResolver struct {
-	target     resolver.Target
-	cc         resolver.ClientConn
-	addrsStore map[string][]string
-}
-
-func (r *AddrResolver) start() {
-	addrStrs := r.addrsStore[r.target.Endpoint]
-	addrs := make([]resolver.Address, len(addrStrs))
-	for i, s := range addrStrs {
-		addrs[i] = resolver.Address{Addr: s}
-	}
-	r.cc.UpdateState(resolver.State{Addresses: addrs})
-}
-func (*AddrResolver) ResolveNow(o resolver.ResolveNowOptions) {}
-func (*AddrResolver) Close()                                  {}
