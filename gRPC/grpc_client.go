@@ -29,6 +29,7 @@ func NewClientConn(scheme string, service_name string, addrs ...string) (api.API
 	}
 	r.InitialState(resolver.State{Addresses: rAddress})
 	address := fmt.Sprintf("%s:///%s", r.Scheme(), service_name)
+	fmt.Printf("%s\n", address)
 
 	options := []grpc.DialOption{
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
@@ -44,6 +45,7 @@ func NewClientConn(scheme string, service_name string, addrs ...string) (api.API
 	}
 
 	cc := api.NewAPIClient(conn)
+	fmt.Printf("New API Client")
 
 	return cc, nil
 }
