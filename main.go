@@ -146,13 +146,13 @@ func main()  {
 				fmt.Printf("%v\n",_p)
 				conn.Write(_p)
 			}else if msg.MsgType == uint32(api.TYPE_ID_REQUEST_HELLO) {
-				//reply := api.Reply{}
-				////msg.Lable = lable
-				//msg.ToProtoModel(&reply)
-				//fmt.Printf("%s\n", "Client Decode Msg ")
-				//hlReply := api.Hello_Reply{}
-				//reply.Reply.UnmarshalTo(&hlReply)
-				//fmt.Printf("Connection ID %v\n", hlReply.ConnectionId)
+				reply := api.Reply{}
+				//msg.Lable = lable
+				msg.ToProtoModel(&reply)
+				fmt.Printf("%s\n", "Client Decode Msg ")
+				hlReply := api.Hello_Reply{}
+				reply.Reply.UnmarshalTo(&hlReply)
+				fmt.Printf("Connection ID %v\n", hlReply.ConnectionId)
 			}
 
 		}
