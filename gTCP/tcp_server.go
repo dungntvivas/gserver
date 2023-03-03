@@ -3,12 +3,14 @@ package gTCP
 import (
 	"crypto/rand"
 	"github.com/golang/protobuf/proto"
+	"github.com/google/uuid"
 	"github.com/panjf2000/gnet/v2"
 	"gitlab.vivas.vn/go/grpc_api/api"
 	"gitlab.vivas.vn/go/gserver/gBase"
 	"google.golang.org/protobuf/types/known/anypb"
 	"net"
 	"runtime"
+	"sync"
 	"time"
 )
 
@@ -23,6 +25,8 @@ type TCPServer struct {
 	lis net.Listener
 	tcpDone chan struct{}
 	chReceiveMsg chan *gBase.SocketMessage
+	clients sync.Map
+	mu sync.Mutex
 }
 func New(config gBase.ConfigOption, chReceiveRequest chan *gBase.Payload) *TCPServer {
 
@@ -40,7 +44,7 @@ func New(config gBase.ConfigOption, chReceiveRequest chan *gBase.Payload) *TCPSe
 	return p
 }
 func (p *TCPServer) Serve() {
-	go gnet.Run(p, "tcp://"+p.Config.Addr, gnet.WithMulticore(true), gnet.WithTicker(true), gnet.WithReusePort(true))
+	go gnet.Run(p, "tcp://"+p.Config.Addr, gnet.WithMulticore(true), gnet.WithReusePort(true))
 	for i := 0 ;i<runtime.NumCPU()*2;i++{
 		go p.receiveMessage()
 	}
@@ -58,8 +62,13 @@ func (p *TCPServer) OnOpen(c gnet.Conn) (out []byte, action gnet.Action) {
 	newConn := gBase.NewConnection(&gBase.ServerConnection{
 		DecType: p.Config.EncodeType,
 		IsSetupConnection: true,
+	},&gBase.ClientConnection{
+		Fd: c.Fd(),
 	})
 	c.SetContext(newConn)
+	p.mu.Lock()
+	p.clients.Store(c.Fd(),&c)
+	p.mu.Unlock()
 
 	go func(_c *gnet.Conn) {
 
@@ -72,7 +81,7 @@ func (p *TCPServer) OnOpen(c gnet.Conn) (out []byte, action gnet.Action) {
 			ServerEncodeType: api.EncodeType(newConn.Server.DecType),
 		}
 		receive := api.Receive{
-			Type: 100,
+			Type: uint32(api.TYPE_ID_RECEIVE_HELLO),
 			ServerTime: helloReceive.ServerTime,
 		}
 		_receiveAny,_ := anypb.New(&helloReceive)
@@ -86,6 +95,9 @@ func (p *TCPServer) OnOpen(c gnet.Conn) (out []byte, action gnet.Action) {
 }
 func (p *TCPServer) OnClose(c gnet.Conn, err error) (action gnet.Action) {
 	p. LogInfo ("conn [%v] Close", c.Fd())
+	p.mu.Lock()
+	p.clients.Delete(c.Fd())
+	p.mu.Unlock()
 	//if ct := c.Context().(*gBase.Connection);ct != nil{
 	//
 	//}
@@ -117,7 +129,7 @@ func (p *TCPServer) onReceiveRequest(msg *gBase.SocketMessage) {
 	p.LogInfo("group %v",msg.MsgGroup)
 	p.LogInfo("type %v",msg.MsgType)
 	if msg.MsgGroup == uint32(api.Group_CONNECTION) {
-		if(msg.MsgType == 101){
+		if(msg.MsgType == uint32(api.TYPE_ID_REQUEST_HELLO)){
 
 			request := api.Request{}
 			msg.ToProtoModel(&request)
@@ -130,6 +142,35 @@ func (p *TCPServer) onReceiveRequest(msg *gBase.SocketMessage) {
 			}
 			p.LogInfo("Client Encode Type %v",hlRequest.EncodeType.String())
 			p.LogInfo("Platfrom %v",hlRequest.Platform)
+
+
+			msg.Conn.Client.IsSetupConnection = true
+			msg.Conn.Client.PKey = hlRequest.PKey
+			msg.Conn.Client.EncType = gBase.Encryption_Type(hlRequest.EncodeType)
+			p.LogInfo("Client Setup encode type %s",msg.Conn.Client.EncType.String())
+			msg.Conn.Client.Platfrom = int32(hlRequest.Platform)
+			msg.Conn.Connection_id,_ = uuid.New().MarshalBinary()
+
+
+			/// BUILD REPLY
+
+			reply := api.Reply{Status: 0}
+			hlreply := api.Hello_Reply{ConnectionId: msg.Conn.Connection_id}
+			_hlreply,_ := anypb.New(&hlreply)
+			reply.Reply = _hlreply
+			_reply , _ := proto.Marshal(&reply)
+			_msg := gBase.SocketMessage{
+				Payload: _reply,
+				MsgType: msg.MsgType,
+				MsgGroup: msg.MsgGroup,
+				MSG_ID: msg.MSG_ID,
+
+			}
+			_buf, _ := _msg.Encode(msg.Conn.Client.EncType, msg.Conn.Client.PKey)
+			p.LogInfo("reply to client %d encode type %s ",msg.Conn.Client.Fd,msg.Conn.Client.EncType.String())
+			if c,o := p.clients.Load(msg.Fd); o{
+				(*c.(*gnet.Conn)).AsyncWrite(_buf,nil)
+			}
 		}
 	}
 

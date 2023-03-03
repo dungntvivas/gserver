@@ -4,13 +4,17 @@ import (
 	"fmt"
 	"github.com/golang/protobuf/proto"
 	"gitlab.vivas.vn/go/grpc_api/api"
-	"gitlab.vivas.vn/go/gserver/gBase"
-	"gitlab.vivas.vn/go/gserver/gTCP"
-	"gitlab.vivas.vn/go/internal/logger"
+	"gitlab.vivas.vn/go/internal/encryption/aes"
+	"gitlab.vivas.vn/go/internal/encryption/rsa"
+	"gitlab.vivas.vn/go/internal/encryption/xor"
 	"google.golang.org/protobuf/types/known/anypb"
 	"io"
 	"net"
 	"time"
+	"gitlab.vivas.vn/go/gserver/gBase"
+	"gitlab.vivas.vn/go/gserver/gTCP"
+	"gitlab.vivas.vn/go/internal/logger"
+
 )
 
 func main()  {
@@ -52,8 +56,12 @@ func main()  {
 
 	hlReceive := api.HelloReceive{}
 
-	//encode := api.EncodeType_NONE
-	//lable,_ := xor.NEW_XOR_KEY()
+	encode := api.EncodeType_AES
+	_rsa, _ := rsa.VRSA_NEW()
+	_ = _rsa.GetPublicKey()
+	xor_lable,_ := xor.NEW_XOR_KEY()
+
+	aes_key,_ := aes.NEW_AES_KEY()
 
 	for {
 		n, err := conn.Read(buf)
@@ -64,13 +72,30 @@ func main()  {
 			break
 		}
 		if n != 0 {
-			msg, psize, _ := gBase.DecodeHeader(buf[0:n])
+			fmt.Printf("Receive %d byte\n", n)
+			msg, psize := gBase.DecodeHeader(buf[0:n],n)
+			if(msg.MSG_encode_decode_type == gBase.Encryption_RSA){
+				msg.Conn = &gBase.Connection{
+					Server: &gBase.ServerConnection{
+						Rsa: _rsa,
+					},
+				}
+			}else if(msg.MSG_encode_decode_type == gBase.Encryption_AES){
+				msg.Conn = &gBase.Connection{
+					Server: &gBase.ServerConnection{
+						PKey: aes_key,
+					},
+				}
+			}else if(msg.MSG_encode_decode_type == gBase.Encryption_XOR){
+				msg.Lable = xor_lable
+			}
+			fmt.Printf("Message encode Type %s\n", msg.MSG_encode_decode_type.String())
 			if psize > n {
 				break
 			}
-			msg.Payload = buf[16:n]
+
 			fmt.Printf("Msg Type %v\n", msg.MsgType)
-			if msg.MsgType == 100 {
+			if msg.MsgType == uint32(api.TYPE_ID_RECEIVE_HELLO) {
 				/// Receive Msg
 				receive := api.Receive{}
 				msg.ToProtoModel(&receive)
@@ -83,12 +108,13 @@ func main()  {
 				}
 				// setup client receive encode
 				request := api.Request{
-					Type: 101,
+					Type: uint32(api.TYPE_ID_REQUEST_HELLO),
 					Group: api.Group_CONNECTION,
 				}
 				request_hello := api.Hello_Request{
-					EncodeType: api.EncodeType_XOR,
-					Platform: api.Platform_ANDROID,
+					EncodeType: encode,
+					PKey: aes_key,
+					Platform: api.Platform_OTHER,
 				}
 				_request_hello,_ := anypb.New(&request_hello)
 				request.Request = _request_hello
@@ -96,13 +122,19 @@ func main()  {
 				_request , _ := proto.Marshal(&request)
 				fmt.Printf("Payload Send %v \n", _request)
 
-
-
 				// encode send to server
-				newMsg := gBase.NewMessage(_request, uint32(api.Group_CONNECTION),101,[]byte{1,2,3,4,5})
+				newMsg := gBase.NewMessage(_request, uint32(api.Group_CONNECTION),request.Type,[]byte{1,2,3,4,5})
 				_p , _ := newMsg.Encode(gBase.Encryption_Type(hlReceive.ServerEncodeType),hlReceive.PKey)
 				fmt.Printf("%v\n",_p)
 				conn.Write(_p)
+			}else if msg.MsgType == uint32(api.TYPE_ID_REQUEST_HELLO) {
+				reply := api.Reply{}
+				//msg.Lable = lable
+				msg.ToProtoModel(&reply)
+				fmt.Printf("%s\n", "Client Decode Msg ")
+				hlReply := api.Hello_Reply{}
+				reply.Reply.UnmarshalTo(&hlReply)
+				fmt.Printf("Connection ID %v\n", hlReply.ConnectionId)
 
 			}
 
@@ -113,7 +145,6 @@ func main()  {
 
 	conn.Close()
 
-	/// create tcp client test
 
 
 

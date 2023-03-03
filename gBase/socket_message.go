@@ -86,15 +86,15 @@ func NewMessage(_payload []byte, _group uint32,_type uint32, _id []byte) *Socket
 // 16 -> size Payload
 
 // DecodeHeader chuyển data byte về dữ liệu SocketMessage ,MsgSize , Lable size
-func DecodeHeader(header []byte) (*SocketMessage,int,int){
+func DecodeHeader(header []byte,n int) (*SocketMessage,int){
 	header_size := 0x10
 	if(len(header) < header_size){
 		fmt.Printf("%v", "Header size Invalid \n")
-		return nil,0,0
+		return nil,0
 	}
 	if header[0] != 0x82 || header[1] != 0x68 || header[2] != 0x80 || header[3] != 0x65 { // RDPA
 		fmt.Printf("%v", "Error Header \n")
-		return nil,0,0
+		return nil,0
 	}
 	msgSize := (int(header[4]) << 0x10) + (int(header[5]) << 0x8) + int(header[6])
 	lable_size := 0
@@ -104,19 +104,25 @@ func DecodeHeader(header []byte) (*SocketMessage,int,int){
 	///
 	_socketMSG.MsgType = uint32(header[8])
 	/// MSG ID
-	_socketMSG.MSG_ID = header[11:16]
+	_socketMSG.MSG_ID = header[0xB:header_size]
 	_hasEnc := (header[9] & 0x80) == 0x80
 	if _hasEnc {
-		_enc_type := uint8(header[6] & 0x60)
+		_enc_type := uint8(header[9] & 0x60)
 		_socketMSG.MSG_encode_decode_type = Encryption_Type(_enc_type)
 		if (_socketMSG.MSG_encode_decode_type == Encryption_AES || _socketMSG.MSG_encode_decode_type == Encryption_RSA){
 			// get iv_size from header
 			lable_size = int(header[9]&0x1F) << 6
 			lable_size = lable_size | (int(header[10]&0xFC) >> 2)
+			_socketMSG.Payload = header[header_size+lable_size:]
+			_socketMSG.Lable = header[header_size:header_size+lable_size]
+		}else{
+			_socketMSG.Payload = header[header_size:n]
 		}
+	}else{
+		_socketMSG.Payload = header[header_size:n]
 	}
 	fmt.Printf("%v", "MSG\n")
-	return &_socketMSG,msgSize,lable_size
+	return &_socketMSG,msgSize
 }
 
 func DecodePacket(log *logger.Logger,c gnet.Conn) []*SocketMessage {
@@ -161,6 +167,9 @@ func DecodePacket(log *logger.Logger,c gnet.Conn) []*SocketMessage {
 			_socketMSG := SocketMessage{
 				Fd: c.Fd(),
 			}
+			if ct := c.Context().(*Connection);ct != nil{
+				_socketMSG.Conn = ct
+			}
 			/// GROUP
 			_socketMSG.MsgGroup = uint32(header[7])
 			///
@@ -192,6 +201,7 @@ func DecodePacket(log *logger.Logger,c gnet.Conn) []*SocketMessage {
 					_iv_key := raw_payload[0:_iv_size]
 					_socketMSG.Lable = _iv_key
 					_socketMSG.Payload = raw_payload[_iv_size:]
+
 					//_socketMSG.Payload, err = aes.CBCDecrypter(raw_payload[_iv_size:], conn.Server.PKey, _iv_key)
 					//if(err != nil){
 					//	log.Log(logger.Info,"Decode AES Error %v",err.Error())
@@ -203,9 +213,7 @@ func DecodePacket(log *logger.Logger,c gnet.Conn) []*SocketMessage {
 					_rsa_key := raw_payload[0:_raa_key_size]
 					_socketMSG.Lable = _rsa_key
 					_socketMSG.Payload = raw_payload[_raa_key_size:]
-					if ct := c.Context().(*Connection);ct != nil{
-						_socketMSG.Conn = ct
-					}
+
 					//
 					//_xKey, err := conn.Server.Rsa.RSA_PKCS1_Decrypt(_rsa_key)
 					//if (err != nil){
@@ -244,10 +252,12 @@ func (p *SocketMessage) DecodePayloadIfNeed() {
 			fmt.Printf("Lable XOR %v\n", xor_key)
 			p.Payload = xor.EncryptDecrypt(p.Payload,xor_key)
 		}else if(p.MSG_encode_decode_type == Encryption_AES){
-
+			fmt.Printf("Lable iv %v\n",p.Lable)
+			p.Payload, _ = aes.CBCDecrypter(p.Payload, p.Conn.Server.PKey, p.Lable)
 		}
+		p.MSG_encode_decode_type = Encryption_NONE
 	}
-	p.MSG_encode_decode_type = Encryption_NONE
+
 }
 
 
@@ -280,6 +290,7 @@ func (p *SocketMessage) Encode(encodeType Encryption_Type, pKey []byte) ([]byte,
 		size += len(p.Payload)
 		out_buf = append(out_buf, p.Payload...)
 	}else if encodeType == Encryption_XOR { // xor Payload
+		fmt.Printf("Encryption_XOR Message \n")
 		size += len(p.Payload)
 		out_buf = append(out_buf, xor.EncryptDecrypt(p.Payload, pKey)...)
 	}else if encodeType == Encryption_AES {
