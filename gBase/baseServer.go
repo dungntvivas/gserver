@@ -104,10 +104,17 @@ var DefaultWebSocketConfigOption = ConfigOption{
 	EncodeType:Encryption_NONE,
 }
 var DefaultUdpSocketConfigOption = ConfigOption{
-	Addr:       ":44225",
+	Addr:       ":44226",
 	Tls:        TLS{IsTLS: false},
 	Protocol:   RequestProtocol_UDP,
 	ServerName: "UDP",
+	EncodeType:Encryption_NONE,
+}
+var DefaultUdsSocketConfigOption = ConfigOption{
+	Addr:       "/tmp/uds",
+	Tls:        TLS{IsTLS: false},
+	Protocol:   RequestProtocol_UDS,
+	ServerName: "UDS",
 	EncodeType:Encryption_NONE,
 }
 

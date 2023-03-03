@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"github.com/golang/protobuf/proto"
 	"gitlab.vivas.vn/go/grpc_api/api"
+	"gitlab.vivas.vn/go/gserver/gUDP"
+	"gitlab.vivas.vn/go/gserver/gUDS"
 	"gitlab.vivas.vn/go/internal/encryption/aes"
 	"gitlab.vivas.vn/go/internal/encryption/rsa"
 	"gitlab.vivas.vn/go/internal/encryption/xor"
@@ -21,15 +23,32 @@ func main()  {
 
 	done := make(chan struct{})
 	chReceiveRequest := make(chan *gBase.Payload)
+	_logger, _ := logger.New(logger.Info, logger.LogDestinations{logger.DestinationFile: {}, logger.DestinationStdout: {}}, "/tmp/server.log")
+
 	tcp_option := gBase.DefaultTcpSocketConfigOption
 	tcp_option.EncodeType = gBase.Encryption_RSA
-	_logger, _ := logger.New(logger.Info, logger.LogDestinations{logger.DestinationFile: {}, logger.DestinationStdout: {}}, "/tmp/server.log")
 	tcp_option.Logger = _logger
+	udp_option := gBase.DefaultUdpSocketConfigOption
+	udp_option.EncodeType = gBase.Encryption_NONE
+	udp_option.Logger = _logger
+
+	uds_option := gBase.DefaultUdsSocketConfigOption
+	uds_option.EncodeType = gBase.Encryption_NONE
+	uds_option.Logger = _logger
+
+
 	go func() {
 		tcp := gTCP.New(tcp_option,chReceiveRequest)
 		tcp.Serve()
 	}()
-	
+	go func() {
+		udp := gUDP.New(udp_option,chReceiveRequest)
+		udp.Serve()
+	}()
+	go func() {
+		uds := gUDS.New(uds_option,chReceiveRequest)
+		uds.Serve()
+	}()
 	
 	for n:=0;n<1;n++{
 		go func() {
@@ -46,8 +65,7 @@ func main()  {
 	}
 
 	time.Sleep(time.Second * 2)
-
-	conn, err := net.Dial("tcp", "localhost:44224")
+	conn, err := net.Dial("unix", "/tmp/uds")
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -128,14 +146,13 @@ func main()  {
 				fmt.Printf("%v\n",_p)
 				conn.Write(_p)
 			}else if msg.MsgType == uint32(api.TYPE_ID_REQUEST_HELLO) {
-				reply := api.Reply{}
-				//msg.Lable = lable
-				msg.ToProtoModel(&reply)
-				fmt.Printf("%s\n", "Client Decode Msg ")
-				hlReply := api.Hello_Reply{}
-				reply.Reply.UnmarshalTo(&hlReply)
-				fmt.Printf("Connection ID %v\n", hlReply.ConnectionId)
-
+				//reply := api.Reply{}
+				////msg.Lable = lable
+				//msg.ToProtoModel(&reply)
+				//fmt.Printf("%s\n", "Client Decode Msg ")
+				//hlReply := api.Hello_Reply{}
+				//reply.Reply.UnmarshalTo(&hlReply)
+				//fmt.Printf("Connection ID %v\n", hlReply.ConnectionId)
 			}
 
 		}

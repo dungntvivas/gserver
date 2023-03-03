@@ -1,4 +1,4 @@
-package gTCP
+package gUDS
 
 import (
 	"crypto/rand"
@@ -16,10 +16,10 @@ import (
 
 /* PAYLOAD
 
-*/
+ */
 
 
-type TCPServer struct {
+type UDSServer struct {
 	gBase.GServer
 	gnet.BuiltinEventEngine
 	lis net.Listener
@@ -28,33 +28,33 @@ type TCPServer struct {
 	clients sync.Map
 	mu sync.Mutex
 }
-func New(config gBase.ConfigOption, chReceiveRequest chan *gBase.Payload) *TCPServer {
+func New(config gBase.ConfigOption, chReceiveRequest chan *gBase.Payload) *UDSServer {
 
 	b := gBase.GServer{
 		Config:           &config,
 		ChReceiveRequest: chReceiveRequest,
 	}
-	p := &TCPServer{
+	p := &UDSServer{
 		GServer: b,
 		tcpDone: make(chan struct{}),
 		chReceiveMsg: make(chan *gBase.SocketMessage),
 	}
 	return p
 }
-func (p *TCPServer) Serve() {
-	go gnet.Run(p, "tcp://"+p.Config.Addr, gnet.WithMulticore(true), gnet.WithReusePort(true))
+func (p *UDSServer) Serve() {
+	go gnet.Run(p, "unix://"+p.Config.Addr, gnet.WithMulticore(true), gnet.WithReusePort(true))
 	for i := 0 ;i<runtime.NumCPU()*2;i++{
 		go p.receiveMessage()
 	}
 }
-func (p *TCPServer) OnBoot(eng gnet.Engine) gnet.Action {
+func (p *UDSServer) OnBoot(eng gnet.Engine) gnet.Action {
 	p.LogInfo("Listener opened on %s", p.Config.Addr)
 	return gnet.None
 }
-func (p *TCPServer) OnShutdown(eng gnet.Engine) {
+func (p *UDSServer) OnShutdown(eng gnet.Engine) {
 
 }
-func (p *TCPServer) OnOpen(c gnet.Conn) (out []byte, action gnet.Action) {
+func (p *UDSServer) OnOpen(c gnet.Conn) (out []byte, action gnet.Action) {
 	p. LogInfo ("conn [%v] Open", c.Fd())
 	// build msg  hello send to client
 	newConn := gBase.NewConnection(&gBase.ServerConnection{
@@ -91,7 +91,7 @@ func (p *TCPServer) OnOpen(c gnet.Conn) (out []byte, action gnet.Action) {
 	}(&c)
 	return
 }
-func (p *TCPServer) OnClose(c gnet.Conn, err error) (action gnet.Action) {
+func (p *UDSServer) OnClose(c gnet.Conn, err error) (action gnet.Action) {
 	p. LogInfo ("conn [%v] Close", c.Fd())
 	p.mu.Lock()
 	p.clients.Delete(c.Fd())
@@ -101,27 +101,27 @@ func (p *TCPServer) OnClose(c gnet.Conn, err error) (action gnet.Action) {
 	//}
 	return gnet.Close
 }
-func (p *TCPServer) OnTraffic(c gnet.Conn) gnet.Action {
+func (p *UDSServer) OnTraffic(c gnet.Conn) gnet.Action {
 	msgs := gBase.DecodePacket(p.Config.Logger,c)
 	for i := range msgs{
 		p.chReceiveMsg <- msgs[i]
 	}
 	return gnet.None
 }
-func (p *TCPServer)receiveMessage(){
-	loop:
-		for{
-			select {
-				case <- p.tcpDone:
-					break loop
-			case msg := <-p.chReceiveMsg:
-				p.LogInfo("Receive Msg from connection %d",msg.Fd)
-				p.onReceiveRequest(msg)
-			}
+func (p *UDSServer)receiveMessage(){
+loop:
+	for{
+		select {
+		case <- p.tcpDone:
+			break loop
+		case msg := <-p.chReceiveMsg:
+			p.LogInfo("Receive Msg from connection %d",msg.Fd)
+			p.onReceiveRequest(msg)
 		}
+	}
 }
 
-func (p *TCPServer) onReceiveRequest(msg *gBase.SocketMessage) {
+func (p *UDSServer) onReceiveRequest(msg *gBase.SocketMessage) {
 	//decode payload if need
 	p.LogInfo("id %v",msg.MSG_ID)
 	p.LogInfo("group %v",msg.MsgGroup)
@@ -174,7 +174,7 @@ func (p *TCPServer) onReceiveRequest(msg *gBase.SocketMessage) {
 
 }
 
-func (p *TCPServer) Close() {
+func (p *UDSServer) Close() {
 	p.LogInfo("Close")
 	close(p.tcpDone)
 }
