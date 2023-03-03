@@ -146,7 +146,7 @@ func (p *Service)processRequest(payload *gBase.Payload){
 	if (payload.Request.PayloadType == uint32(gBase.PayloadType_BIN)){
 		/// convert bin_request to proto request
 		var _rq api.Request
-		if err := jsonpb.UnmarshalString(string(payload.Request.BinRequest), &_rq);err != nil{
+		if err := proto.Unmarshal(payload.Request.BinRequest, &_rq);err != nil{
 			p.LogError("%v",err.Error())
 			reply.Status = uint32(api.ResultType_INTERNAL_SERVER_ERROR)
 			goto on_reply

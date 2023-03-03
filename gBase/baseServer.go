@@ -2,6 +2,7 @@ package gBase
 
 import (
 	"gitlab.vivas.vn/go/grpc_api/api"
+
 	"gitlab.vivas.vn/go/internal/logger"
 )
 
@@ -71,7 +72,7 @@ type ConfigOption struct {
 	Tls        TLS
 	ServerName string
 	Protocol   RequestProtocol
-	encodeType Encryption_Type
+	EncodeType Encryption_Type
 }
 
 var DefaultHttpConfigOption = ConfigOption{
@@ -79,36 +80,38 @@ var DefaultHttpConfigOption = ConfigOption{
 	Tls:        TLS{IsTLS: false},
 	Protocol:   RequestProtocol_HTTP,
 	ServerName: "HTTP",
-	encodeType:Encryption_NONE,
+	EncodeType:Encryption_NONE,
 }
 var DefaultGrpcConfigOption = ConfigOption{
 	Addr:       ":44223",
 	Tls:        TLS{IsTLS: false},
 	Protocol:   RequestProtocol_GRPC,
 	ServerName: "HTTP",
-	encodeType:Encryption_NONE,
+	EncodeType:Encryption_NONE,
 }
 var DefaultTcpSocketConfigOption = ConfigOption{
 	Addr:       ":44224",
 	Tls:        TLS{IsTLS: false},
 	Protocol:   RequestProtocol_TCP,
 	ServerName: "TCP",
-	encodeType:Encryption_NONE,
+	EncodeType:Encryption_NONE,
 }
 var DefaultWebSocketConfigOption = ConfigOption{
 	Addr:       ":44225",
 	Tls:        TLS{IsTLS: false},
 	Protocol:   RequestProtocol_WS,
 	ServerName: "Websocket",
-	encodeType:Encryption_NONE,
+	EncodeType:Encryption_NONE,
 }
 var DefaultUdpSocketConfigOption = ConfigOption{
 	Addr:       ":44225",
 	Tls:        TLS{IsTLS: false},
 	Protocol:   RequestProtocol_UDP,
 	ServerName: "UDP",
-	encodeType:Encryption_NONE,
+	EncodeType:Encryption_NONE,
 }
+
+
 
 
 type GServer struct {
