@@ -187,6 +187,42 @@ func (p *SocketServer) onReceiveRequest(msg *SocketMessage) {
 		}
 	}else{
 		/// chuyển tiếp đến host tương ứng
+		if msg.Conn.Client.IsSetupConnection == false{
+			p.LogError("Connection %d SetupConnection %v - Authen %v",msg.Conn.Client.Fd,msg.Conn.Client.IsSetupConnection,msg.Conn.Client.IsAuthen)
+			if _buf ,err := GetReplyBuffer(uint32(api.ResultType_REQUEST_INVALID),msg.MsgType,msg.MsgGroup,msg.MSG_ID,nil,Encryption_NONE,nil);err == nil {
+				if c,o := p.clients.Load(msg.Fd); o{
+					(*c.(*gnet.Conn)).AsyncWrite(_buf,nil)
+				}
+			}
+		} else if msg.Conn.Client.IsAuthen == false || len(msg.Conn.Session_id) == 0{
+			p.LogError("Connection %d SetupConnection %v - Authen %v",msg.Conn.Client.Fd,msg.Conn.Client.IsSetupConnection,msg.Conn.Client.IsAuthen)
+			if _buf ,err := GetReplyBuffer(uint32(api.ResultType_REQUEST_INVALID),msg.MsgType,msg.MsgGroup,msg.MSG_ID,nil,msg.Conn.Client.EncType,msg.Conn.Client.PKey);err == nil {
+				if c,o := p.clients.Load(msg.Fd); o{
+					(*c.(*gnet.Conn)).AsyncWrite(_buf,nil)
+				}
+			}
+		}else{
+			/// Build request
+			rq := api.Request{}
+			rq.Type = msg.MsgType
+			rq.Group = api.Group(msg.MsgGroup)
+			rq.BinRequest = msg.Payload
+			rq.PayloadType = uint32(PayloadType_BIN)
+			rq.Session = &api.Session{SessionId: msg.Conn.Session_id}
+			result := make(chan *api.Reply)
+			p.HandlerRequest(&Payload{Request: &rq, ChReply: result})
+			res := *<-result
+			if res.Status != 0 {
+				res.Msg = api.ResultType(res.Status).String()
+			}
+			p.LogInfo("%v",res)
+
+			if _buf ,err := GetReplyBuffer(uint32(api.ResultType_SESSION_EXPIRE),msg.MsgType,msg.MsgGroup,msg.MSG_ID,nil,msg.Conn.Client.EncType,msg.Conn.Client.PKey);err == nil {
+				if c,o := p.clients.Load(msg.Fd); o{
+					(*c.(*gnet.Conn)).AsyncWrite(_buf,nil)
+				}
+			}
+		}
 	}
 
 
