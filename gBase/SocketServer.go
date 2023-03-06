@@ -58,11 +58,12 @@ func (p *SocketServer) OnShutdown(eng gnet.Engine) {
 
 }
 func (p *SocketServer) OnOpen(c gnet.Conn) (out []byte, action gnet.Action) {
-	p. LogInfo ("conn [%v] Open", c.Fd())
+	p. LogInfo ("conn [%v] Open Connection", c.Fd())
 	// build msg  hello send to client
 	newConn := NewConnection(&ServerConnection{
 		DecType: p.Config.EncodeType,
 		IsSetupConnection: true,
+
 	},&ClientConnection{
 		Fd: c.Fd(),
 	})
@@ -70,30 +71,33 @@ func (p *SocketServer) OnOpen(c gnet.Conn) (out []byte, action gnet.Action) {
 	p.mu.Lock()
 	p.clients.Store(c.Fd(),&c)
 	p.mu.Unlock()
-
-	go func(_c *gnet.Conn) {
-
-		/// build hello
-		bytes := make([]byte, 5) //generate a random 32 byte key for AES-256
-		rand.Read(bytes)
-		helloReceive := api.HelloReceive{
-			ServerTime:       uint64(time.Now().Unix()),
-			PKey:             newConn.Server.PKey,
-			ServerEncodeType: api.EncodeType(newConn.Server.DecType),
-		}
-		receive := api.Receive{
-			Type: uint32(api.TYPE_ID_RECEIVE_HELLO),
-			ServerTime: helloReceive.ServerTime,
-		}
-		_receiveAny,_ := anypb.New(&helloReceive)
-		receive.Receive = _receiveAny
-		_receive_bin,_ := proto.Marshal(&receive)
-		msg := NewMessage(_receive_bin,0, receive.Type, bytes)
-		out, _ := msg.Encode(Encryption_NONE, nil)
-		(*_c).AsyncWrite(out,nil)
-	}(&c)
+	go p.SendHelloMsg(newConn,&c)
 	return
 }
+
+func (p *SocketServer)SendHelloMsg(newConn *Connection,_c *gnet.Conn){
+	/// build hello
+	bytes := make([]byte, 5) //generate a random 32 byte key for AES-256
+	rand.Read(bytes)
+	helloReceive := api.HelloReceive{
+		ServerTime:       uint64(time.Now().Unix()),
+		PKey:             newConn.Server.PKey,
+		ServerEncodeType: api.EncodeType(newConn.Server.DecType),
+	}
+	receive := api.Receive{
+		Type: uint32(api.TYPE_ID_RECEIVE_HELLO),
+		ServerTime: helloReceive.ServerTime,
+	}
+	_receiveAny,_ := anypb.New(&helloReceive)
+	receive.Receive = _receiveAny
+	_receive_bin,_ := proto.Marshal(&receive)
+	msg := NewMessage(_receive_bin,0, receive.Type, bytes)
+	out, _ := msg.Encode(Encryption_NONE, nil)
+	(*_c).AsyncWrite(out,nil)
+
+}
+
+
 func (p *SocketServer) OnClose(c gnet.Conn, err error) (action gnet.Action) {
 	p. LogInfo ("conn [%v] Close", c.Fd())
 	p.mu.Lock()
@@ -102,8 +106,9 @@ func (p *SocketServer) OnClose(c gnet.Conn, err error) (action gnet.Action) {
 	return gnet.Close
 }
 func (p *SocketServer) OnTraffic(c gnet.Conn) gnet.Action {
-	msgs := DecodePacket(p.Config.Logger,c)
-	for i := range msgs{
+	p.LogInfo("OnTraffic %d", c.Fd())
+	msgs := DecodePacket(p.Config.Logger, c)
+	for i := range msgs {
 		p.chReceiveMsg <- msgs[i]
 	}
 	return gnet.None
@@ -224,9 +229,6 @@ func (p *SocketServer) onReceiveRequest(msg *SocketMessage) {
 			}
 		}
 	}
-
-
-
 }
 
 func (p *SocketServer) Close() {

@@ -14,6 +14,7 @@ type ClientConnection struct {
 	Fd int // id của kết nối đối với os ( udp không xác định được fd)
 	IsAuthen bool // kết nối này đã được xác thực hay chưa
 	IsWebSocketConnection bool // kết nối này là websocket hay không
+	IsUpgrade bool
 }
 type ServerConnection struct {
 	DecType      Encryption_Type

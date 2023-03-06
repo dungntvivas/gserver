@@ -156,7 +156,7 @@ func DecodePacket(log *logger.Logger,c gnet.Conn) []*SocketMessage {
 			}
 			if header[0] != 0x82 || header[1] != 0x68 || header[2] != 0x80 || header[3] != 0x65 { // RDPA
 				c.Discard(-1) // clear buffer
-				log.Log(logger.Info,"Magic byte not math")
+				log.Log(logger.Info,"Magic byte not math %v",header)
 				break loop
 			}
 			msgSize := (int(header[4]) << 0x10) + (int(header[5]) << 0x8) + int(header[6])
