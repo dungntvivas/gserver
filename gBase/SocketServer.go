@@ -1,11 +1,12 @@
 package gBase
 
 import (
+	"bytes"
 	"crypto/rand"
-	"github.com/golang/protobuf/proto"
 	"github.com/google/uuid"
 	"github.com/panjf2000/gnet/v2"
 	"gitlab.vivas.vn/go/grpc_api/api"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
 	"net"
 	"runtime"
@@ -130,13 +131,13 @@ func (p *SocketServer) onReceiveRequest(msg *SocketMessage) {
 
 			request := api.Request{}
 			msg.ToProtoModel(&request)
-			p.LogInfo("payload %v",msg.Payload)
 
 			hlRequest := api.Hello_Request{}
 			if err := request.Request.UnmarshalTo(&hlRequest);err != nil{
 				p.LogError("Request UnmarshalTo Hello_Request %v",err.Error())
 				return
 			}
+
 			p.LogInfo("Client Encode Type %v",hlRequest.EncodeType.String())
 			p.LogInfo("Platfrom %v",hlRequest.Platform)
 
@@ -151,19 +152,60 @@ func (p *SocketServer) onReceiveRequest(msg *SocketMessage) {
 
 			/// BUILD REPLY
 
-			reply := api.Reply{Status: 0}
+			reply := NewReply(0)
 			hlreply := api.Hello_Reply{ConnectionId: msg.Conn.Connection_id}
-			_hlreply,_ := anypb.New(&hlreply)
-			reply.Reply = _hlreply
-			_reply , _ := proto.Marshal(&reply)
+			_ = PackReply(reply,&hlreply)
+			_reply , _ := MsgToByte(reply)
 			_msg := SocketMessage{
 				Payload: _reply,
 				MsgType: msg.MsgType,
 				MsgGroup: msg.MsgGroup,
 				MSG_ID: msg.MSG_ID,
-
 			}
 			_buf, _ := _msg.Encode(msg.Conn.Client.EncType, msg.Conn.Client.PKey)
+			p.LogInfo("reply to client %d encode type %s ",msg.Conn.Client.Fd,msg.Conn.Client.EncType.String())
+			if c,o := p.clients.Load(msg.Fd); o{
+				(*c.(*gnet.Conn)).AsyncWrite(_buf,nil)
+			}
+		}else if msg.MsgType == uint32(api.TYPE_ID_REQUEST_KEEPALIVE) {
+			request := api.Request{}
+			msg.ToProtoModel(&request)
+
+			hlRequest := api.KeepAlive_Request{}
+			if err := request.Request.UnmarshalTo(&hlRequest);err != nil{
+				p.LogError("Request UnmarshalTo Hello_Request %v",err.Error())
+				return
+			}
+			p.LogInfo("Receive KeepAlive From Connection %d connection ID %v",msg.Conn.Client.Fd,hlRequest.ConnectionId)
+			/// check request
+			if !bytes.Equal(msg.Conn.Connection_id,hlRequest.ConnectionId) {
+				p.LogError("Connection ID Invalid")
+			}
+			if !msg.Conn.Client.IsSetupConnection {
+				p.LogError("Client chưa thiết lập mã hóa kết nối")
+			}
+			// Status , reply , encode type , pkey
+
+			_re := api.KeepAlive_Reply{}
+
+			_buf ,err := GetReplyBuffer(0,msg.MsgType,msg.MsgGroup,msg.MSG_ID,&_re,msg.Conn.Client.EncType,msg.Conn.Client.PKey)
+			if err != nil {
+				p.LogError("Error %v",err.Error())
+			}
+
+
+
+			//reply := NewReply(0)
+			//
+			//_ = PackReply(reply,&_re)
+			//_reply , _ := MsgToByte(reply)
+			//_msg := SocketMessage{
+			//	Payload: _reply,
+			//	MsgType: msg.MsgType,
+			//	MsgGroup: msg.MsgGroup,
+			//	MSG_ID: msg.MSG_ID,
+			//}
+			//_buf, _ := _msg.Encode(msg.Conn.Client.EncType, msg.Conn.Client.PKey)
 			p.LogInfo("reply to client %d encode type %s ",msg.Conn.Client.Fd,msg.Conn.Client.EncType.String())
 			if c,o := p.clients.Load(msg.Fd); o{
 				(*c.(*gnet.Conn)).AsyncWrite(_buf,nil)

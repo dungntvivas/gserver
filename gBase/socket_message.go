@@ -2,7 +2,7 @@ package gBase
 
 import (
 	"fmt"
-	"github.com/golang/protobuf/proto"
+	"google.golang.org/protobuf/proto"
 	"github.com/google/uuid"
 	"github.com/panjf2000/gnet/v2"
 	"gitlab.vivas.vn/go/grpc_api/api"

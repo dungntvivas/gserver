@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"github.com/golang/protobuf/proto"
+	"google.golang.org/protobuf/proto"
 	"gitlab.vivas.vn/go/grpc_api/api"
 	"gitlab.vivas.vn/go/gserver/gUDP"
 	"gitlab.vivas.vn/go/gserver/gUDS"
@@ -26,14 +26,14 @@ func main()  {
 	_logger, _ := logger.New(logger.Info, logger.LogDestinations{logger.DestinationFile: {}, logger.DestinationStdout: {}}, "/tmp/server.log")
 
 	tcp_option := gBase.DefaultTcpSocketConfigOption
-	tcp_option.EncodeType = gBase.Encryption_RSA
+	tcp_option.EncodeType = gBase.Encryption_XOR
 	tcp_option.Logger = _logger
 	udp_option := gBase.DefaultUdpSocketConfigOption
-	udp_option.EncodeType = gBase.Encryption_NONE
+	udp_option.EncodeType = gBase.Encryption_AES
 	udp_option.Logger = _logger
 
 	uds_option := gBase.DefaultUdsSocketConfigOption
-	uds_option.EncodeType = gBase.Encryption_NONE
+	uds_option.EncodeType = gBase.Encryption_RSA
 	uds_option.Logger = _logger
 
 
@@ -78,7 +78,7 @@ func main()  {
 	_rsa, _ := rsa.VRSA_NEW()
 	_ = _rsa.GetPublicKey()
 	xor_lable,_ := xor.NEW_XOR_KEY()
-
+	hlReply := api.Hello_Reply{}
 	aes_key,_ := aes.NEW_AES_KEY()
 
 	for {
@@ -150,9 +150,50 @@ func main()  {
 				//msg.Lable = lable
 				msg.ToProtoModel(&reply)
 				fmt.Printf("%s\n", "Client Decode Msg ")
-				hlReply := api.Hello_Reply{}
+
 				reply.Reply.UnmarshalTo(&hlReply)
 				fmt.Printf("Connection ID %v\n", hlReply.ConnectionId)
+
+				if reply.Status == 0 {
+					// send ping request
+					rq := gBase.NewRequest(uint32(api.TYPE_ID_REQUEST_KEEPALIVE), api.Group_CONNECTION)
+					pingRequest := api.KeepAlive_Request{
+						ConnectionId: hlReply.ConnectionId,
+					}
+					if err := gBase.PackRequest(rq,&pingRequest);err != nil {
+						fmt.Printf("%v", err.Error())
+						break
+					}
+					_rq,err := gBase.MsgToByte(rq)
+					if err != nil {
+						fmt.Printf("%v", err.Error())
+						break
+					}
+					newMsg := gBase.NewMessage(_rq, uint32(api.Group_CONNECTION),rq.Type,[]byte{2,3,4,5,6})
+					_p , _ := newMsg.Encode(gBase.Encryption_Type(hlReceive.ServerEncodeType),hlReceive.PKey)
+					conn.Write(_p)
+
+				}
+			}else if msg.MsgType == uint32(api.TYPE_ID_REQUEST_KEEPALIVE) {
+				fmt.Printf("%v\n", "TYPE_ID_REQUEST_KEEPALIVE")
+				time.Sleep(time.Second * 5)
+				rq := gBase.NewRequest(uint32(api.TYPE_ID_REQUEST_KEEPALIVE), api.Group_CONNECTION)
+				pingRequest := api.KeepAlive_Request{
+					ConnectionId: hlReply.ConnectionId,
+				}
+				if err := gBase.PackRequest(rq,&pingRequest);err != nil {
+					fmt.Printf("%v", err.Error())
+					break
+				}
+				_rq,err := gBase.MsgToByte(rq)
+				if err != nil {
+					fmt.Printf("%v", err.Error())
+					break
+				}
+				newMsg := gBase.NewMessage(_rq, uint32(api.Group_CONNECTION),rq.Type,[]byte{2,3,4,5,6})
+				_p , _ := newMsg.Encode(gBase.Encryption_Type(hlReceive.ServerEncodeType),hlReceive.PKey)
+				conn.Write(_p)
+
 			}
 
 		}
