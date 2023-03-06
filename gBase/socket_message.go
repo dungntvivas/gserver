@@ -2,7 +2,6 @@ package gBase
 
 import (
 	"fmt"
-	"google.golang.org/protobuf/proto"
 	"github.com/google/uuid"
 	"github.com/panjf2000/gnet/v2"
 	"gitlab.vivas.vn/go/grpc_api/api"
@@ -10,6 +9,7 @@ import (
 	"gitlab.vivas.vn/go/internal/encryption/rsa"
 	"gitlab.vivas.vn/go/internal/encryption/xor"
 	"gitlab.vivas.vn/go/internal/logger"
+	"google.golang.org/protobuf/proto"
 )
 
 //   16 Bytes Header
@@ -67,6 +67,16 @@ func (m *SocketMessage)ToProtoModel(src proto.Message) error{
 	m.DecodePayloadIfNeed()
 	return proto.Unmarshal(m.Payload, src)
 }
+func (m *SocketMessage)ToRequestProtoModel(src proto.Message) error{
+	request := api.Request{}
+	if err := m.ToProtoModel(&request);err != nil {
+		return err
+	}
+	if err := request.Request.UnmarshalTo(src);err != nil{
+		return err
+	}
+	return nil
+}
 func NewMessage(_payload []byte, _group uint32,_type uint32, _id []byte) *SocketMessage {
 	p := &SocketMessage{
 		Payload:  _payload,
@@ -121,7 +131,6 @@ func DecodeHeader(header []byte,n int) (*SocketMessage,int){
 	}else{
 		_socketMSG.Payload = header[header_size:n]
 	}
-	fmt.Printf("%v", "MSG\n")
 	return &_socketMSG,msgSize
 }
 
@@ -191,9 +200,6 @@ func DecodePacket(log *logger.Logger,c gnet.Conn) []*SocketMessage {
 					break loop
 				}
 				_socketMSG.MSG_encode_decode_type = Encryption_Type(_enc_type)
-
-				// XOR
-				// b1. xor Payload -> decode với xor key được setup với client này từ trước
 				if (conn.Server.DecType == Encryption_AES){
 					// get iv_size from header
 					_iv_size := int(header[9]&0x1F) << 6
@@ -202,11 +208,6 @@ func DecodePacket(log *logger.Logger,c gnet.Conn) []*SocketMessage {
 					_socketMSG.Lable = _iv_key
 					_socketMSG.Payload = raw_payload[_iv_size:]
 
-					//_socketMSG.Payload, err = aes.CBCDecrypter(raw_payload[_iv_size:], conn.Server.PKey, _iv_key)
-					//if(err != nil){
-					//	log.Log(logger.Info,"Decode AES Error %v",err.Error())
-					//	break loop
-					//}
 				}else if(conn.Server.DecType == Encryption_RSA){ /// decode với private key của server
 					_raa_key_size := int(header[9]&0x1F) << 6
 					_raa_key_size = _raa_key_size | (int(header[10]&0xFC) >> 2)
@@ -214,13 +215,6 @@ func DecodePacket(log *logger.Logger,c gnet.Conn) []*SocketMessage {
 					_socketMSG.Lable = _rsa_key
 					_socketMSG.Payload = raw_payload[_raa_key_size:]
 
-					//
-					//_xKey, err := conn.Server.Rsa.RSA_PKCS1_Decrypt(_rsa_key)
-					//if (err != nil){
-					//	log.Log(logger.Info,"Decode RSA Error %v",err.Error())
-					//	break loop
-					//}
-					//_socketMSG.Payload = xor.EncryptDecrypt(raw_payload[_raa_key_size:], _xKey)
 				}else if conn.Server.DecType == Encryption_XOR{ /// với xor ko có Lable đi kèm
 					_socketMSG.Lable = conn.Server.PKey
 					_socketMSG.Payload = raw_payload
@@ -247,12 +241,9 @@ func (p *SocketMessage) DecodePayloadIfNeed() {
 		if(p.MSG_encode_decode_type == Encryption_XOR){ /// XOR -> RAW
 			p.Payload = xor.EncryptDecrypt(p.Payload,p.Lable)
 		}else if(p.MSG_encode_decode_type == Encryption_RSA){
-			fmt.Printf("Lable %v\n",p.Lable)
 			xor_key ,_ := p.Conn.Server.Rsa.RSA_PKCS1_Decrypt(p.Lable)
-			fmt.Printf("Lable XOR %v\n", xor_key)
 			p.Payload = xor.EncryptDecrypt(p.Payload,xor_key)
 		}else if(p.MSG_encode_decode_type == Encryption_AES){
-			fmt.Printf("Lable iv %v\n",p.Lable)
 			p.Payload, _ = aes.CBCDecrypter(p.Payload, p.Conn.Server.PKey, p.Lable)
 		}
 		p.MSG_encode_decode_type = Encryption_NONE
@@ -290,7 +281,6 @@ func (p *SocketMessage) Encode(encodeType Encryption_Type, pKey []byte) ([]byte,
 		size += len(p.Payload)
 		out_buf = append(out_buf, p.Payload...)
 	}else if encodeType == Encryption_XOR { // xor Payload
-		fmt.Printf("Encryption_XOR Message \n")
 		size += len(p.Payload)
 		out_buf = append(out_buf, xor.EncryptDecrypt(p.Payload, pKey)...)
 	}else if encodeType == Encryption_AES {
@@ -319,9 +309,7 @@ func (p *SocketMessage) Encode(encodeType Encryption_Type, pKey []byte) ([]byte,
 		if err_pubkey != nil {
 			return nil, err_pubkey
 		}
-		fmt.Printf("Lable XOR %v\n", lable)
 		lable_rsa, err := rsa.RSA_PKCS1_Encrypt(lable, _public_key)
-		fmt.Printf("Lable RSA %v\n", lable_rsa)
 		if err != nil {
 			return nil, err
 		}

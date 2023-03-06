@@ -58,8 +58,10 @@ func MsgToByte(src proto.Message) ([]byte, error){
 
 func GetReplyBuffer(status uint32,msgType uint32,msgGroup uint32,msgID []byte,src proto.Message,encodeType Encryption_Type,pKey []byte) ([]byte,error){
 	reply := NewReply(status)
-	if err := PackReply(reply,src);err != nil {
-		return nil,err
+	if (src != nil){
+		if err := PackReply(reply,src);err != nil {
+			return nil,err
+		}
 	}
 	_rep_buf,err := MsgToByte(reply)
 	if err != nil {

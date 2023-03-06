@@ -114,7 +114,7 @@ var DefaultUdsSocketConfigOption = ConfigOption{
 	Addr:       "/tmp/uds",
 	Tls:        TLS{IsTLS: false},
 	Protocol:   RequestProtocol_UDS,
-	ServerName: "Unix networks Socket",
+	ServerName: "Unix Domain Socket",
 	EncodeType:Encryption_NONE,
 }
 

@@ -115,103 +115,81 @@ loop:
 		case <- p.Done:
 			break loop
 		case msg := <-p.chReceiveMsg:
-			p.LogInfo("Receive Msg from connection %d",msg.Fd)
 			p.onReceiveRequest(msg)
 		}
 	}
 }
 
 func (p *SocketServer) onReceiveRequest(msg *SocketMessage) {
-	//decode payload if need
-	p.LogInfo("id %v",msg.MSG_ID)
-	p.LogInfo("group %v",msg.MsgGroup)
-	p.LogInfo("type %v",msg.MsgType)
+
 	if msg.MsgGroup == uint32(api.Group_CONNECTION) {
 		if(msg.MsgType == uint32(api.TYPE_ID_REQUEST_HELLO)){
-
-			request := api.Request{}
-			msg.ToProtoModel(&request)
-
 			hlRequest := api.Hello_Request{}
-			if err := request.Request.UnmarshalTo(&hlRequest);err != nil{
+			status := uint32(api.ResultType_OK)
+			if err := msg.ToRequestProtoModel(&hlRequest);err != nil {
 				p.LogError("Request UnmarshalTo Hello_Request %v",err.Error())
-				return
+				status = uint32(api.ResultType_REQUEST_INVALID)
+			}else{
+				// process
+				msg.Conn.Client.IsSetupConnection = true
+				msg.Conn.Client.PKey = hlRequest.PKey
+				msg.Conn.Client.EncType = Encryption_Type(hlRequest.EncodeType)
+				p.LogInfo("Client %d Setup encode type %s",msg.Conn.Client.Fd,msg.Conn.Client.EncType.String())
+				msg.Conn.Client.Platfrom = int32(hlRequest.Platform)
+				msg.Conn.Connection_id,_ = uuid.New().MarshalBinary()
 			}
-
-			p.LogInfo("Client Encode Type %v",hlRequest.EncodeType.String())
-			p.LogInfo("Platfrom %v",hlRequest.Platform)
-
-
-			msg.Conn.Client.IsSetupConnection = true
-			msg.Conn.Client.PKey = hlRequest.PKey
-			msg.Conn.Client.EncType = Encryption_Type(hlRequest.EncodeType)
-			p.LogInfo("Client Setup encode type %s",msg.Conn.Client.EncType.String())
-			msg.Conn.Client.Platfrom = int32(hlRequest.Platform)
-			msg.Conn.Connection_id,_ = uuid.New().MarshalBinary()
-
-
 			/// BUILD REPLY
-
-			reply := NewReply(0)
 			hlreply := api.Hello_Reply{ConnectionId: msg.Conn.Connection_id}
-			_ = PackReply(reply,&hlreply)
-			_reply , _ := MsgToByte(reply)
-			_msg := SocketMessage{
-				Payload: _reply,
-				MsgType: msg.MsgType,
-				MsgGroup: msg.MsgGroup,
-				MSG_ID: msg.MSG_ID,
+			_buf ,err := GetReplyBuffer(status,msg.MsgType,msg.MsgGroup,msg.MSG_ID,&hlreply,msg.Conn.Client.EncType,msg.Conn.Client.PKey)
+			if err != nil {
+				p.LogError("Error %v",err.Error())
 			}
-			_buf, _ := _msg.Encode(msg.Conn.Client.EncType, msg.Conn.Client.PKey)
-			p.LogInfo("reply to client %d encode type %s ",msg.Conn.Client.Fd,msg.Conn.Client.EncType.String())
 			if c,o := p.clients.Load(msg.Fd); o{
 				(*c.(*gnet.Conn)).AsyncWrite(_buf,nil)
 			}
 		}else if msg.MsgType == uint32(api.TYPE_ID_REQUEST_KEEPALIVE) {
-			request := api.Request{}
-			msg.ToProtoModel(&request)
-
+			p.LogInfo("Receive KeepAlive Request from connection id %d",msg.Conn.Client.Fd)
 			hlRequest := api.KeepAlive_Request{}
-			if err := request.Request.UnmarshalTo(&hlRequest);err != nil{
+			status := uint32(api.ResultType_OK)
+			if err := msg.ToRequestProtoModel(&hlRequest);err != nil{
 				p.LogError("Request UnmarshalTo Hello_Request %v",err.Error())
-				return
-			}
-			p.LogInfo("Receive KeepAlive From Connection %d connection ID %v",msg.Conn.Client.Fd,hlRequest.ConnectionId)
-			/// check request
-			if !bytes.Equal(msg.Conn.Connection_id,hlRequest.ConnectionId) {
-				p.LogError("Connection ID Invalid")
-			}
-			if !msg.Conn.Client.IsSetupConnection {
+				status = uint32(api.ResultType_REQUEST_INVALID)
+			} else if !msg.Conn.Client.IsSetupConnection {
 				p.LogError("Client chưa thiết lập mã hóa kết nối")
+				status = uint32(api.ResultType_ENCRYPT_ERROR)
+
+			} else if !bytes.Equal(msg.Conn.Connection_id,hlRequest.ConnectionId) {
+				p.LogError("Connection ID Invalid")
+				status = uint32(api.KeepAlive_CONNECTION_ID_INVALID)
+
+			}else{
+				msg.Conn.UpdateAt = uint64(time.Now().Unix())
 			}
-			// Status , reply , encode type , pkey
-
 			_re := api.KeepAlive_Reply{}
-
-			_buf ,err := GetReplyBuffer(0,msg.MsgType,msg.MsgGroup,msg.MSG_ID,&_re,msg.Conn.Client.EncType,msg.Conn.Client.PKey)
+			_buf ,err := GetReplyBuffer(status,msg.MsgType,msg.MsgGroup,msg.MSG_ID,&_re,msg.Conn.Client.EncType,msg.Conn.Client.PKey)
 			if err != nil {
 				p.LogError("Error %v",err.Error())
+				return
 			}
-
-
-
-			//reply := NewReply(0)
-			//
-			//_ = PackReply(reply,&_re)
-			//_reply , _ := MsgToByte(reply)
-			//_msg := SocketMessage{
-			//	Payload: _reply,
-			//	MsgType: msg.MsgType,
-			//	MsgGroup: msg.MsgGroup,
-			//	MSG_ID: msg.MSG_ID,
-			//}
-			//_buf, _ := _msg.Encode(msg.Conn.Client.EncType, msg.Conn.Client.PKey)
-			p.LogInfo("reply to client %d encode type %s ",msg.Conn.Client.Fd,msg.Conn.Client.EncType.String())
+			if c,o := p.clients.Load(msg.Fd); o{
+				(*c.(*gnet.Conn)).AsyncWrite(_buf,nil)
+			}
+		}else{
+			p.LogInfo("Connection %d send STRANGE_REQUEST id %d",msg.Conn.Client.Fd,msg.MsgType)
+			_buf ,err := GetReplyBuffer(uint32(api.ResultType_STRANGE_REQUEST),msg.MsgType,msg.MsgGroup,msg.MSG_ID,nil,msg.Conn.Client.EncType,msg.Conn.Client.PKey)
+			if err != nil {
+				p.LogError("Error %v",err.Error())
+				return
+			}
 			if c,o := p.clients.Load(msg.Fd); o{
 				(*c.(*gnet.Conn)).AsyncWrite(_buf,nil)
 			}
 		}
+	}else{
+		/// chuyển tiếp đến host tương ứng
 	}
+
+
 
 }
 

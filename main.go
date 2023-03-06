@@ -107,7 +107,7 @@ func main()  {
 			}else if(msg.MSG_encode_decode_type == gBase.Encryption_XOR){
 				msg.Lable = xor_lable
 			}
-			fmt.Printf("Message encode Type %s\n", msg.MSG_encode_decode_type.String())
+
 			if psize > n {
 				break
 			}
@@ -121,9 +121,7 @@ func main()  {
 
 				receive.Receive.UnmarshalTo(&hlReceive)
 				fmt.Printf("Server Encrypt Type => %v\n", hlReceive.ServerEncodeType.String())
-				if hlReceive.ServerEncodeType != api.EncodeType_NONE {
-					fmt.Printf("Pkey => %v\n", hlReceive.PKey)
-				}
+
 				// setup client receive encode
 				request := api.Request{
 					Type: uint32(api.TYPE_ID_REQUEST_HELLO),
@@ -138,21 +136,17 @@ func main()  {
 				request.Request = _request_hello
 				// api.Request --> binary
 				_request , _ := proto.Marshal(&request)
-				fmt.Printf("Payload Send %v \n", _request)
 
 				// encode send to server
 				newMsg := gBase.NewMessage(_request, uint32(api.Group_CONNECTION),request.Type,[]byte{1,2,3,4,5})
 				_p , _ := newMsg.Encode(gBase.Encryption_Type(hlReceive.ServerEncodeType),hlReceive.PKey)
-				fmt.Printf("%v\n",_p)
 				conn.Write(_p)
 			}else if msg.MsgType == uint32(api.TYPE_ID_REQUEST_HELLO) {
 				reply := api.Reply{}
 				//msg.Lable = lable
 				msg.ToProtoModel(&reply)
-				fmt.Printf("%s\n", "Client Decode Msg ")
 
 				reply.Reply.UnmarshalTo(&hlReply)
-				fmt.Printf("Connection ID %v\n", hlReply.ConnectionId)
 
 				if reply.Status == 0 {
 					// send ping request
@@ -175,7 +169,6 @@ func main()  {
 
 				}
 			}else if msg.MsgType == uint32(api.TYPE_ID_REQUEST_KEEPALIVE) {
-				fmt.Printf("%v\n", "TYPE_ID_REQUEST_KEEPALIVE")
 				time.Sleep(time.Second * 5)
 				rq := gBase.NewRequest(uint32(api.TYPE_ID_REQUEST_KEEPALIVE), api.Group_CONNECTION)
 				pingRequest := api.KeepAlive_Request{
