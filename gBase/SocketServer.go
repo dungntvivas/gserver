@@ -3,6 +3,8 @@ package gBase
 import (
 	"bytes"
 	"crypto/rand"
+	"github.com/gobwas/ws"
+	"github.com/gobwas/ws/wsutil"
 	"github.com/google/uuid"
 	"github.com/panjf2000/gnet/v2"
 	"gitlab.vivas.vn/go/grpc_api/api"
@@ -32,13 +34,13 @@ func NewSocket(config ConfigOption, chReceiveRequest chan *Payload) SocketServer
 	p := SocketServer{
 		GServer: b,
 		Done: make(chan struct{}),
-		chReceiveMsg: make(chan *SocketMessage),
+		chReceiveMsg: make(chan *SocketMessage,100),
 	}
 	return p
 }
 func (p *SocketServer) Serve() {
 	protocol := "tcp"
-	if p.Config.Protocol == RequestProtocol_TCP{
+	if p.Config.Protocol == RequestProtocol_TCP || p.Config.Protocol == RequestProtocol_WS{
 		protocol = "tcp://"
 	}else if p.Config.Protocol == RequestProtocol_UDP{
 		protocol = "udp://"
@@ -60,6 +62,7 @@ func (p *SocketServer) OnShutdown(eng gnet.Engine) {
 func (p *SocketServer) OnOpen(c gnet.Conn) (out []byte, action gnet.Action) {
 	p. LogInfo ("conn [%v] Open Connection", c.Fd())
 	// build msg  hello send to client
+
 	newConn := NewConnection(&ServerConnection{
 		DecType: p.Config.EncodeType,
 		IsSetupConnection: true,
@@ -71,7 +74,10 @@ func (p *SocketServer) OnOpen(c gnet.Conn) (out []byte, action gnet.Action) {
 	p.mu.Lock()
 	p.clients.Store(c.Fd(),&c)
 	p.mu.Unlock()
-	go p.SendHelloMsg(newConn,&c)
+	if p.Config.Protocol != RequestProtocol_WS {
+		go p.SendHelloMsg(newConn,&c)
+	}
+
 	return
 }
 
@@ -93,7 +99,12 @@ func (p *SocketServer)SendHelloMsg(newConn *Connection,_c *gnet.Conn){
 	_receive_bin,_ := proto.Marshal(&receive)
 	msg := NewMessage(_receive_bin,0, receive.Type, bytes)
 	out, _ := msg.Encode(Encryption_NONE, nil)
-	(*_c).AsyncWrite(out,nil)
+	if p.Config.Protocol != RequestProtocol_WS {
+		(*_c).AsyncWrite(out,nil)
+	}else{
+		wsutil.WriteClientMessage((*_c), ws.OpText, []byte("Hello word"))
+	}
+
 
 }
 
@@ -105,8 +116,8 @@ func (p *SocketServer) OnClose(c gnet.Conn, err error) (action gnet.Action) {
 	p.mu.Unlock()
 	return gnet.Close
 }
+
 func (p *SocketServer) OnTraffic(c gnet.Conn) gnet.Action {
-	p.LogInfo("OnTraffic %d", c.Fd())
 	msgs := DecodePacket(p.Config.Logger, c)
 	for i := range msgs {
 		p.chReceiveMsg <- msgs[i]

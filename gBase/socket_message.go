@@ -2,6 +2,8 @@ package gBase
 
 import (
 	"fmt"
+	"github.com/gobwas/ws"
+	"github.com/gobwas/ws/wsutil"
 	"github.com/google/uuid"
 	"github.com/panjf2000/gnet/v2"
 	"gitlab.vivas.vn/go/grpc_api/api"
@@ -51,7 +53,10 @@ import (
 // b2 . encode Payload sử dụng key của client setup lúc tạo kết nối + iv mới dc ramdom => tạo ra 1 msg Payload aes
 // b3 . đóng gói iv key này + Payload được aes ở bước 2 , gửi về client
 
-
+type JSONSocketMessage struct {
+	Type    int    `json:"type"`
+	Group   string `json:"group"`
+}
 
 type SocketMessage struct {
 	Payload                []byte
@@ -96,44 +101,93 @@ func NewMessage(_payload []byte, _group uint32,_type uint32, _id []byte) *Socket
 // 16 -> size Payload
 
 // DecodeHeader chuyển data byte về dữ liệu SocketMessage ,MsgSize , Lable size
-func DecodeHeader(header []byte,n int) (*SocketMessage,int){
+func DecodeData(data []byte,n int) *SocketMessage{
 	header_size := 0x10
-	if(len(header) < header_size){
+	if(len(data) < header_size){
 		fmt.Printf("%v", "Header size Invalid \n")
-		return nil,0
+		return nil
 	}
-	if header[0] != 0x82 || header[1] != 0x68 || header[2] != 0x80 || header[3] != 0x65 { // RDPA
+	if data[0] != 0x82 || data[1] != 0x68 || data[2] != 0x80 || data[3] != 0x65 { // RDPA
 		fmt.Printf("%v", "Error Header \n")
-		return nil,0
+		return nil
 	}
-	msgSize := (int(header[4]) << 0x10) + (int(header[5]) << 0x8) + int(header[6])
+	msgSize := (int(data[4]) << 0x10) + (int(data[5]) << 0x8) + int(data[6])
+	if msgSize > len(data) {
+		fmt.Printf("%v", "Data invalid \n")
+		return nil
+	}
 	lable_size := 0
 	_socketMSG := SocketMessage{}
 	/// GROUP
-	_socketMSG.MsgGroup = uint32(header[7])
+	_socketMSG.MsgGroup = uint32(data[7])
 	///
-	_socketMSG.MsgType = uint32(header[8])
+	_socketMSG.MsgType = uint32(data[8])
 	/// MSG ID
-	_socketMSG.MSG_ID = header[0xB:header_size]
-	_hasEnc := (header[9] & 0x80) == 0x80
+	_socketMSG.MSG_ID = data[0xB:header_size]
+	_hasEnc := (data[9] & 0x80) == 0x80
 	if _hasEnc {
-		_enc_type := uint8(header[9] & 0x60)
+		_enc_type := uint8(data[9] & 0x60)
 		_socketMSG.MSG_encode_decode_type = Encryption_Type(_enc_type)
 		if (_socketMSG.MSG_encode_decode_type == Encryption_AES || _socketMSG.MSG_encode_decode_type == Encryption_RSA){
 			// get iv_size from header
-			lable_size = int(header[9]&0x1F) << 6
-			lable_size = lable_size | (int(header[10]&0xFC) >> 2)
-			_socketMSG.Payload = header[header_size+lable_size:]
-			_socketMSG.Lable = header[header_size:header_size+lable_size]
+			lable_size = int(data[9]&0x1F) << 6
+			lable_size = lable_size | (int(data[10]&0xFC) >> 2)
+			_socketMSG.Payload = data[header_size+lable_size:]
+			_socketMSG.Lable = data[header_size:header_size+lable_size]
 		}else{
-			_socketMSG.Payload = header[header_size:n]
+			_socketMSG.Payload = data[header_size:n]
 		}
 	}else{
-		_socketMSG.Payload = header[header_size:n]
+		_socketMSG.Payload = data[header_size:n]
 	}
-	return &_socketMSG,msgSize
+	return &_socketMSG
 }
 
+func DecodeWebsocketPacket(log *logger.Logger,c gnet.Conn) *SocketMessage {
+	msg, op, err := wsutil.ReadClientData(c)
+	if err != nil {
+		log.Log(logger.Info,"conn[%v] err=[%v]", c.RemoteAddr().String(), err.Error())
+		return nil
+	}
+	if op == ws.OpBinary { // accept json or bin data prot
+		/// parser msg to proto
+		if len(msg) >= 16 {
+			if _msg := DecodeData(msg,len(msg)); _msg != nil {
+				_msg.Conn = c.Context().(*Connection)
+				_msg.Fd = c.Fd()
+				return _msg
+			}
+		}
+
+	}else if op == ws.OpText{
+		// convert to proto model
+		log.Log(logger.Info,"%s",string(msg))
+		return nil
+		//JSM := JSONSocketMessage{}
+		//if err := json.Unmarshal(msg,&JSM);err != nil {
+		//	log.Log(logger.Info,"conn[%v] json.Unmarshal=[%v]", c.RemoteAddr().String(), err.Error())
+		//	return nil
+		//}
+		//log.Log(logger.Info,"group %v - Type %v",JSM.Group,JSM.Type)
+		//
+		//newMsg := &SocketMessage{
+		//	MsgType:  uint32(JSM.Type),
+		//	MsgGroup: uint32(api.Group_value[JSM.Group]),
+		//	Fd: c.Fd(),
+		//	Conn: c.Context().(*Connection),
+		//	Payload:msg,
+		//}
+		//
+		//return newMsg
+
+	}else{
+		log.Log(logger.Info,"conn[%v] err=[%s]", c.RemoteAddr().String(), "Op Invalid")
+		return nil
+	}
+
+
+	return nil
+}
 func DecodePacket(log *logger.Logger,c gnet.Conn) []*SocketMessage {
 	header_size := 0x10
 	models := []*SocketMessage{}

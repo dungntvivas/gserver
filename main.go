@@ -1,11 +1,14 @@
 package main
 
 import (
+	"fmt"
 	"gitlab.vivas.vn/go/gserver/gBase"
 	"gitlab.vivas.vn/go/gserver/gTCP"
 	"gitlab.vivas.vn/go/gserver/gUDP"
 	"gitlab.vivas.vn/go/gserver/gUDS"
+	"gitlab.vivas.vn/go/gserver/gWebsocket"
 	"gitlab.vivas.vn/go/internal/logger"
+	"runtime/debug"
 )
 
 func main()  {
@@ -29,6 +32,9 @@ func main()  {
 	ws_option.EncodeType = gBase.Encryption_NONE
 	ws_option.Logger = _logger
 
+	_info,_ := debug.ReadBuildInfo()
+	fmt.Printf("%v", _info)
+
 
 	go func() {
 		tcp := gTCP.New(tcp_option,chReceiveRequest)
@@ -42,11 +48,10 @@ func main()  {
 		uds := gUDS.New(uds_option,chReceiveRequest)
 		uds.Serve()
 	}()
-
-	//go func() {
-	//	ws := gWebsocket.New(ws_option,chReceiveRequest)
-	//	ws.Serve()
-	//}()
+	go func() {
+		ws := gWebsocket.New(ws_option,chReceiveRequest)
+		ws.Serve()
+	}()
 	
 	//for n:=0;n<1;n++{
 	//	go func() {
