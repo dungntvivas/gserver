@@ -82,7 +82,7 @@ func (p *WsServer) OnShutdown(eng gnet.Engine) {
 }
 func (p *WsServer) OnOpen(c gnet.Conn) (out []byte, action gnet.Action) {
 	p.LogInfo("conn [%v] Open Connection", c.Fd())
-	c.SetContext(new(wsCodec))
+	c.SetContext(&wsCodec{vAuthorization: ""})
 	return
 }
 func (p *WsServer) OnTraffic(c gnet.Conn) gnet.Action {
