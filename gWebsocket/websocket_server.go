@@ -3,6 +3,7 @@ package gWebsocket
 import (
 	"encoding/json"
 	"github.com/gobwas/ws"
+	"github.com/gobwas/ws/wsutil"
 	"github.com/panjf2000/gnet/v2"
 	"gitlab.vivas.vn/go/grpc_api/api"
 	"gitlab.vivas.vn/go/gserver/gBase"
@@ -16,11 +17,16 @@ type APIGenerated struct {
 	Group   string `json:"group"`
 }
 
+type chPayload struct {
+	request *api.Request
+	conn *gnet.Conn
+}
+
 type WsServer struct {
 	gBase.GServer
 	gnet.BuiltinEventEngine
 	Done chan struct{}
-	chReceiveMsg chan *api.Request
+	chReceiveMsg chan *chPayload
 	clients sync.Map
 	mu sync.Mutex
 }
@@ -32,7 +38,7 @@ func New(config gBase.ConfigOption, chReceiveRequest chan *gBase.Payload) *WsSer
 	p := WsServer{
 		GServer: b,
 		Done: make(chan struct{}),
-		chReceiveMsg: make(chan *api.Request,100),
+		chReceiveMsg: make(chan *chPayload,100),
 	}
 	return &p
 }
@@ -53,11 +59,17 @@ loop:
 		select {
 		case <- p.Done:
 			break loop
-		case msg_request := <-p.chReceiveMsg:
+		case msg_payload := <-p.chReceiveMsg:
 			var res api.Reply
-			p.LogInfo("Receive Request Group %s - Type %d",msg_request.Group.String(),msg_request.Type)
+			p.LogInfo("Receive Request Group %s - Type %d",msg_payload.request.Group.String(),msg_payload.request.Type)
 			result := make(chan *api.Reply)
-			p.HandlerRequest(&gBase.Payload{Request: msg_request, ChReply: result})
+			p.HandlerRequest(&gBase.Payload{Request: msg_payload.request, ChReply: result})
+			res = *<-result
+			if msg_payload.request.PayloadType == uint32(gBase.PayloadType_JSON) {
+				wsutil.WriteServerMessage(*msg_payload.conn, ws.OpText, res.BinReply)
+			}else{
+				wsutil.WriteServerMessage(*msg_payload.conn, ws.OpBinary, res.BinReply)
+			}
 		}
 	}
 }
@@ -113,7 +125,10 @@ func (p *WsServer) OnTraffic(c gnet.Conn) gnet.Action {
 			}
 			//request.Session = &api.Session{SessionId: vAuthorization}
 
- 			p.chReceiveMsg <- &request
+ 			p.chReceiveMsg <- &chPayload{
+ 				request: &request,
+ 				conn: &c,
+			}
 			return gnet.None
 		}else if message.OpCode == ws.OpBinary { // binary request  payload
 

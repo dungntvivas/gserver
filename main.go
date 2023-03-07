@@ -53,19 +53,19 @@ func main()  {
 		ws.Serve()
 	}()
 	
-	//for n:=0;n<1;n++{
-	//	go func() {
-	//		loop:
-	//			for{
-	//				select {
-	//				case <-chReceiveRequest:
-	//					_logger.Log(logger.Info,"Receive Request")
-	//				case <-done:
-	//					break loop
-	//				}
-	//			}
-	//	}()
-	//}
+	for n:=0;n<1;n++{
+		go func() {
+			loop:
+				for{
+					select {
+					case <-chReceiveRequest:
+						_logger.Log(logger.Info,"Receive Request")
+					case <-done:
+						break loop
+					}
+				}
+		}()
+	}
 	//
 	//time.Sleep(time.Second * 2)
 	//conn, err := net.Dial("unix", "/tmp/uds")
