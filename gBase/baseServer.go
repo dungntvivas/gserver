@@ -36,7 +36,7 @@ type TLS struct {
 }
 type Payload struct {
 	ChReply chan *api.Reply
-	Request  *api.Request
+	Request *api.Request
 	//
 	connection_id string
 }
@@ -64,7 +64,6 @@ func (s Encryption_Type) String() string {
 	}
 }
 
-
 type ConfigOption struct {
 	Done       *chan struct{}
 	Logger     *logger.Logger
@@ -80,46 +79,43 @@ var DefaultHttpConfigOption = ConfigOption{
 	Tls:        TLS{IsTLS: false},
 	Protocol:   RequestProtocol_HTTP,
 	ServerName: "HTTP",
-	EncodeType:Encryption_NONE,
+	EncodeType: Encryption_NONE,
 }
 var DefaultGrpcConfigOption = ConfigOption{
-	Addr:       ":44223",
+	Addr:       ":44226",
 	Tls:        TLS{IsTLS: false},
 	Protocol:   RequestProtocol_GRPC,
 	ServerName: "HTTP",
-	EncodeType:Encryption_NONE,
+	EncodeType: Encryption_NONE,
 }
 var DefaultTcpSocketConfigOption = ConfigOption{
 	Addr:       ":44224",
 	Tls:        TLS{IsTLS: false},
 	Protocol:   RequestProtocol_TCP,
 	ServerName: "TCP",
-	EncodeType:Encryption_NONE,
+	EncodeType: Encryption_NONE,
 }
 var DefaultWebSocketConfigOption = ConfigOption{
-	Addr:       ":44225",
+	Addr:       ":44223",
 	Tls:        TLS{IsTLS: false},
 	Protocol:   RequestProtocol_WS,
 	ServerName: "Websocket",
-	EncodeType:Encryption_NONE,
+	EncodeType: Encryption_NONE,
 }
 var DefaultUdpSocketConfigOption = ConfigOption{
-	Addr:       ":44226",
+	Addr:       ":44225",
 	Tls:        TLS{IsTLS: false},
 	Protocol:   RequestProtocol_UDP,
 	ServerName: "UDP",
-	EncodeType:Encryption_NONE,
+	EncodeType: Encryption_NONE,
 }
 var DefaultUdsSocketConfigOption = ConfigOption{
 	Addr:       "/tmp/uds",
 	Tls:        TLS{IsTLS: false},
 	Protocol:   RequestProtocol_UDS,
 	ServerName: "Unix Domain Socket",
-	EncodeType:Encryption_NONE,
+	EncodeType: Encryption_NONE,
 }
-
-
-
 
 type GServer struct {
 	Config *ConfigOption
@@ -127,7 +123,7 @@ type GServer struct {
 	ChReceiveRequest chan *Payload
 }
 
-func (p *GServer) Close(){
+func (p *GServer) Close() {
 
 }
 

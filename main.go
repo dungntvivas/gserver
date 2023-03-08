@@ -1,17 +1,15 @@
 package main
 
 import (
-	"fmt"
 	"gitlab.vivas.vn/go/gserver/gBase"
 	"gitlab.vivas.vn/go/gserver/gTCP"
 	"gitlab.vivas.vn/go/gserver/gUDP"
 	"gitlab.vivas.vn/go/gserver/gUDS"
 	"gitlab.vivas.vn/go/gserver/gWebsocket"
 	"gitlab.vivas.vn/go/internal/logger"
-	"runtime/debug"
 )
 
-func main()  {
+func main() {
 
 	done := make(chan struct{})
 	chReceiveRequest := make(chan *gBase.Payload)
@@ -32,38 +30,34 @@ func main()  {
 	ws_option.EncodeType = gBase.Encryption_NONE
 	ws_option.Logger = _logger
 
-	_info,_ := debug.ReadBuildInfo()
-	fmt.Printf("%v", _info)
-
-
 	go func() {
-		tcp := gTCP.New(tcp_option,chReceiveRequest)
+		tcp := gTCP.New(tcp_option, chReceiveRequest)
 		tcp.Serve()
 	}()
 	go func() {
-		udp := gUDP.New(udp_option,chReceiveRequest)
+		udp := gUDP.New(udp_option, chReceiveRequest)
 		udp.Serve()
 	}()
 	go func() {
-		uds := gUDS.New(uds_option,chReceiveRequest)
+		uds := gUDS.New(uds_option, chReceiveRequest)
 		uds.Serve()
 	}()
 	go func() {
-		ws := gWebsocket.New(ws_option,chReceiveRequest)
+		ws := gWebsocket.New(ws_option, chReceiveRequest)
 		ws.Serve()
 	}()
-	
-	for n:=0;n<1;n++{
+
+	for n := 0; n < 1; n++ {
 		go func() {
-			loop:
-				for{
-					select {
-					case <-chReceiveRequest:
-						_logger.Log(logger.Info,"Receive Request")
-					case <-done:
-						break loop
-					}
+		loop:
+			for {
+				select {
+				case <-chReceiveRequest:
+					_logger.Log(logger.Info, "Receive Request")
+				case <-done:
+					break loop
 				}
+			}
 		}()
 	}
 	//
@@ -199,11 +193,6 @@ func main()  {
 	//
 	//conn.Close()
 
-
-
-
 	<-done
-
-
 
 }
