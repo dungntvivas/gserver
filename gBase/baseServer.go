@@ -38,7 +38,7 @@ type Payload struct {
 	ChReply chan *api.Reply
 	Request *api.Request
 	//
-	connection_id string
+	Connection_id int
 }
 
 type Encryption_Type uint8

@@ -3,28 +3,28 @@ package gBase
 import (
 	"bytes"
 	"crypto/rand"
-	"github.com/gobwas/ws"
-	"github.com/gobwas/ws/wsutil"
+	"net"
+	"runtime"
+	"sync"
+	"time"
+
 	"github.com/google/uuid"
 	"github.com/panjf2000/gnet/v2"
 	"gitlab.vivas.vn/go/grpc_api/api"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
-	"net"
-	"runtime"
-	"sync"
-	"time"
 )
 
 type SocketServer struct {
 	GServer
 	gnet.BuiltinEventEngine
-	lis net.Listener
-	Done chan struct{}
+	lis          net.Listener
+	Done         chan struct{}
 	chReceiveMsg chan *SocketMessage
-	clients sync.Map
-	mu sync.Mutex
+	clients      sync.Map
+	mu           sync.Mutex
 }
+
 func NewSocket(config ConfigOption, chReceiveRequest chan *Payload) SocketServer {
 
 	b := GServer{
@@ -32,23 +32,23 @@ func NewSocket(config ConfigOption, chReceiveRequest chan *Payload) SocketServer
 		ChReceiveRequest: chReceiveRequest,
 	}
 	p := SocketServer{
-		GServer: b,
-		Done: make(chan struct{}),
-		chReceiveMsg: make(chan *SocketMessage,100),
+		GServer:      b,
+		Done:         make(chan struct{}),
+		chReceiveMsg: make(chan *SocketMessage, 100),
 	}
 	return p
 }
 func (p *SocketServer) Serve() {
 	protocol := "tcp"
-	if p.Config.Protocol == RequestProtocol_TCP || p.Config.Protocol == RequestProtocol_WS{
+	if p.Config.Protocol == RequestProtocol_TCP || p.Config.Protocol == RequestProtocol_WS {
 		protocol = "tcp://"
-	}else if p.Config.Protocol == RequestProtocol_UDP{
+	} else if p.Config.Protocol == RequestProtocol_UDP {
 		protocol = "udp://"
-	}else if p.Config.Protocol == RequestProtocol_UDS{
+	} else if p.Config.Protocol == RequestProtocol_UDS {
 		protocol = "unix://"
 	}
 	go gnet.Run(p, protocol+p.Config.Addr, gnet.WithMulticore(true), gnet.WithReusePort(true))
-	for i := 0 ;i<runtime.NumCPU()*2;i++{
+	for i := 0; i < runtime.NumCPU()*2; i++ {
 		go p.receiveMessage()
 	}
 }
@@ -60,28 +60,27 @@ func (p *SocketServer) OnShutdown(eng gnet.Engine) {
 
 }
 func (p *SocketServer) OnOpen(c gnet.Conn) (out []byte, action gnet.Action) {
-	p. LogInfo ("conn [%v] Open Connection", c.Fd())
+	p.LogInfo("conn [%v] Open Connection", c.Fd())
 	// build msg  hello send to client
 
 	newConn := NewConnection(&ServerConnection{
-		DecType: p.Config.EncodeType,
+		DecType:           p.Config.EncodeType,
 		IsSetupConnection: true,
-
-	},&ClientConnection{
+	}, &ClientConnection{
 		Fd: c.Fd(),
 	})
 	c.SetContext(newConn)
 	p.mu.Lock()
-	p.clients.Store(c.Fd(),&c)
+	p.clients.Store(c.Fd(), &c)
 	p.mu.Unlock()
 	if p.Config.Protocol != RequestProtocol_WS {
-		go p.SendHelloMsg(newConn,&c)
+		go p.SendHelloMsg(newConn, &c)
 	}
 
 	return
 }
 
-func (p *SocketServer)SendHelloMsg(newConn *Connection,_c *gnet.Conn){
+func (p *SocketServer) SendHelloMsg(newConn *Connection, _c *gnet.Conn) {
 	/// build hello
 	bytes := make([]byte, 5) //generate a random 32 byte key for AES-256
 	rand.Read(bytes)
@@ -91,26 +90,28 @@ func (p *SocketServer)SendHelloMsg(newConn *Connection,_c *gnet.Conn){
 		ServerEncodeType: api.EncodeType(newConn.Server.DecType),
 	}
 	receive := api.Receive{
-		Type: uint32(api.TYPE_ID_RECEIVE_HELLO),
+		Type:       uint32(api.TYPE_ID_RECEIVE_HELLO),
 		ServerTime: helloReceive.ServerTime,
 	}
-	_receiveAny,_ := anypb.New(&helloReceive)
+	_receiveAny, _ := anypb.New(&helloReceive)
 	receive.Receive = _receiveAny
-	_receive_bin,_ := proto.Marshal(&receive)
-	msg := NewMessage(_receive_bin,0, receive.Type, bytes)
+	_receive_bin, _ := proto.Marshal(&receive)
+	msg := NewMessage(_receive_bin, 0, receive.Type, bytes)
 	out, _ := msg.Encode(Encryption_NONE, nil)
-	if p.Config.Protocol != RequestProtocol_WS {
-		(*_c).AsyncWrite(out,nil)
-	}else{
-		wsutil.WriteClientMessage((*_c), ws.OpText, []byte("Hello word"))
-	}
-
-
+	(*_c).AsyncWrite(out, nil)
 }
 
+func (p *SocketServer) MarkConnectioIsAuthen(token string, fd int) {
+	p.mu.Lock()
+	if c, ok := p.clients.Load(fd); ok {
+		(*c.(*gnet.Conn)).Context().(*Connection).Client.IsAuthen = true
+		(*c.(*gnet.Conn)).Context().(*Connection).Session_id = token
+	}
+	p.mu.Unlock()
+}
 
 func (p *SocketServer) OnClose(c gnet.Conn, err error) (action gnet.Action) {
-	p. LogInfo ("conn [%v] Close", c.Fd())
+	p.LogInfo("conn [%v] Close", c.Fd())
 	p.mu.Lock()
 	p.clients.Delete(c.Fd())
 	p.mu.Unlock()
@@ -124,11 +125,11 @@ func (p *SocketServer) OnTraffic(c gnet.Conn) gnet.Action {
 	}
 	return gnet.None
 }
-func (p *SocketServer)receiveMessage(){
+func (p *SocketServer) receiveMessage() {
 loop:
-	for{
+	for {
 		select {
-		case <- p.Done:
+		case <-p.Done:
 			break loop
 		case msg := <-p.chReceiveMsg:
 			p.onReceiveRequest(msg)
@@ -139,103 +140,104 @@ loop:
 func (p *SocketServer) onReceiveRequest(msg *SocketMessage) {
 
 	if msg.MsgGroup == uint32(api.Group_CONNECTION) {
-		if(msg.MsgType == uint32(api.TYPE_ID_REQUEST_HELLO)){
+		if msg.MsgType == uint32(api.TYPE_ID_REQUEST_HELLO) {
 			hlRequest := api.Hello_Request{}
 			status := uint32(api.ResultType_OK)
-			if err := msg.ToRequestProtoModel(&hlRequest);err != nil {
-				p.LogError("Request UnmarshalTo Hello_Request %v",err.Error())
+			if err := msg.ToRequestProtoModel(&hlRequest); err != nil {
+				p.LogError("Request UnmarshalTo Hello_Request %v", err.Error())
 				status = uint32(api.ResultType_REQUEST_INVALID)
-			}else{
+			} else {
 				// process
 				msg.Conn.Client.IsSetupConnection = true
 				msg.Conn.Client.PKey = hlRequest.PKey
 				msg.Conn.Client.EncType = Encryption_Type(hlRequest.EncodeType)
-				p.LogInfo("Client %d Setup encode type %s",msg.Conn.Client.Fd,msg.Conn.Client.EncType.String())
+				p.LogInfo("Client %d Setup encode type %s", msg.Conn.Client.Fd, msg.Conn.Client.EncType.String())
 				msg.Conn.Client.Platfrom = int32(hlRequest.Platform)
-				msg.Conn.Connection_id,_ = uuid.New().MarshalBinary()
+				msg.Conn.Connection_id, _ = uuid.New().MarshalBinary()
 			}
 			/// BUILD REPLY
 			hlreply := api.Hello_Reply{ConnectionId: msg.Conn.Connection_id}
-			_buf ,err := GetReplyBuffer(status,msg.MsgType,msg.MsgGroup,msg.MSG_ID,&hlreply,msg.Conn.Client.EncType,msg.Conn.Client.PKey)
+			_buf, err := GetReplyBuffer(status, msg.MsgType, msg.MsgGroup, msg.MSG_ID, &hlreply, msg.Conn.Client.EncType, msg.Conn.Client.PKey)
 			if err != nil {
-				p.LogError("Error %v",err.Error())
+				p.LogError("Error %v", err.Error())
 			}
-			if c,o := p.clients.Load(msg.Fd); o{
-				(*c.(*gnet.Conn)).AsyncWrite(_buf,nil)
+			if c, o := p.clients.Load(msg.Fd); o {
+				(*c.(*gnet.Conn)).AsyncWrite(_buf, nil)
 			}
-		}else if msg.MsgType == uint32(api.TYPE_ID_REQUEST_KEEPALIVE) {
-			p.LogInfo("Receive KeepAlive Request from connection id %d",msg.Conn.Client.Fd)
+		} else if msg.MsgType == uint32(api.TYPE_ID_REQUEST_KEEPALIVE) {
+			p.LogInfo("Receive KeepAlive Request from connection id %d", msg.Conn.Client.Fd)
 			hlRequest := api.KeepAlive_Request{}
 			status := uint32(api.ResultType_OK)
-			if err := msg.ToRequestProtoModel(&hlRequest);err != nil{
-				p.LogError("Request UnmarshalTo Hello_Request %v",err.Error())
+			if err := msg.ToRequestProtoModel(&hlRequest); err != nil {
+				p.LogError("Request UnmarshalTo Hello_Request %v", err.Error())
 				status = uint32(api.ResultType_REQUEST_INVALID)
 			} else if !msg.Conn.Client.IsSetupConnection {
 				p.LogError("Client chưa thiết lập mã hóa kết nối")
 				status = uint32(api.ResultType_ENCRYPT_ERROR)
 
-			} else if !bytes.Equal(msg.Conn.Connection_id,hlRequest.ConnectionId) {
+			} else if !bytes.Equal(msg.Conn.Connection_id, hlRequest.ConnectionId) {
 				p.LogError("Connection ID Invalid")
 				status = uint32(api.KeepAlive_CONNECTION_ID_INVALID)
 
-			}else{
+			} else {
 				msg.Conn.UpdateAt = uint64(time.Now().Unix())
 			}
 			_re := api.KeepAlive_Reply{}
-			_buf ,err := GetReplyBuffer(status,msg.MsgType,msg.MsgGroup,msg.MSG_ID,&_re,msg.Conn.Client.EncType,msg.Conn.Client.PKey)
+			_buf, err := GetReplyBuffer(status, msg.MsgType, msg.MsgGroup, msg.MSG_ID, &_re, msg.Conn.Client.EncType, msg.Conn.Client.PKey)
 			if err != nil {
-				p.LogError("Error %v",err.Error())
+				p.LogError("Error %v", err.Error())
 				return
 			}
-			if c,o := p.clients.Load(msg.Fd); o{
-				(*c.(*gnet.Conn)).AsyncWrite(_buf,nil)
+			if c, o := p.clients.Load(msg.Fd); o {
+				(*c.(*gnet.Conn)).AsyncWrite(_buf, nil)
 			}
-		}else{
-			p.LogInfo("Connection %d send STRANGE_REQUEST id %d",msg.Conn.Client.Fd,msg.MsgType)
-			_buf ,err := GetReplyBuffer(uint32(api.ResultType_STRANGE_REQUEST),msg.MsgType,msg.MsgGroup,msg.MSG_ID,nil,msg.Conn.Client.EncType,msg.Conn.Client.PKey)
+		} else {
+			p.LogInfo("Connection %d send STRANGE_REQUEST id %d", msg.Conn.Client.Fd, msg.MsgType)
+			_buf, err := GetReplyBuffer(uint32(api.ResultType_STRANGE_REQUEST), msg.MsgType, msg.MsgGroup, msg.MSG_ID, nil, msg.Conn.Client.EncType, msg.Conn.Client.PKey)
 			if err != nil {
-				p.LogError("Error %v",err.Error())
+				p.LogError("Error %v", err.Error())
 				return
 			}
-			if c,o := p.clients.Load(msg.Fd); o{
-				(*c.(*gnet.Conn)).AsyncWrite(_buf,nil)
+			if c, o := p.clients.Load(msg.Fd); o {
+				(*c.(*gnet.Conn)).AsyncWrite(_buf, nil)
 			}
 		}
-	}else{
+	} else {
 		/// chuyển tiếp đến host tương ứng
-		if msg.Conn.Client.IsSetupConnection == false{
-			p.LogError("Connection %d SetupConnection %v - Authen %v",msg.Conn.Client.Fd,msg.Conn.Client.IsSetupConnection,msg.Conn.Client.IsAuthen)
-			if _buf ,err := GetReplyBuffer(uint32(api.ResultType_REQUEST_INVALID),msg.MsgType,msg.MsgGroup,msg.MSG_ID,nil,Encryption_NONE,nil);err == nil {
-				if c,o := p.clients.Load(msg.Fd); o{
-					(*c.(*gnet.Conn)).AsyncWrite(_buf,nil)
+		if msg.Conn.Client.IsSetupConnection == false {
+			p.LogError("Connection %d SetupConnection %v - Authen %v", msg.Conn.Client.Fd, msg.Conn.Client.IsSetupConnection, msg.Conn.Client.IsAuthen)
+			if _buf, err := GetReplyBuffer(uint32(api.ResultType_REQUEST_INVALID), msg.MsgType, msg.MsgGroup, msg.MSG_ID, nil, Encryption_NONE, nil); err == nil {
+				if c, o := p.clients.Load(msg.Fd); o {
+					(*c.(*gnet.Conn)).AsyncWrite(_buf, nil)
 				}
 			}
-		} else if msg.Conn.Client.IsAuthen == false || len(msg.Conn.Session_id) == 0{
-			p.LogError("Connection %d SetupConnection %v - Authen %v",msg.Conn.Client.Fd,msg.Conn.Client.IsSetupConnection,msg.Conn.Client.IsAuthen)
-			if _buf ,err := GetReplyBuffer(uint32(api.ResultType_REQUEST_INVALID),msg.MsgType,msg.MsgGroup,msg.MSG_ID,nil,msg.Conn.Client.EncType,msg.Conn.Client.PKey);err == nil {
-				if c,o := p.clients.Load(msg.Fd); o{
-					(*c.(*gnet.Conn)).AsyncWrite(_buf,nil)
+		} else if msg.Conn.Client.IsAuthen == false || len(msg.Conn.Session_id) == 0 {
+			p.LogError("Connection %d SetupConnection %v - Authen %v", msg.Conn.Client.Fd, msg.Conn.Client.IsSetupConnection, msg.Conn.Client.IsAuthen)
+			if _buf, err := GetReplyBuffer(uint32(api.ResultType_REQUEST_INVALID), msg.MsgType, msg.MsgGroup, msg.MSG_ID, nil, msg.Conn.Client.EncType, msg.Conn.Client.PKey); err == nil {
+				if c, o := p.clients.Load(msg.Fd); o {
+					(*c.(*gnet.Conn)).AsyncWrite(_buf, nil)
 				}
 			}
-		}else{
+		} else {
 			/// Build request
 			rq := api.Request{}
 			rq.Type = msg.MsgType
 			rq.Group = api.Group(msg.MsgGroup)
 			rq.BinRequest = msg.Payload
 			rq.PayloadType = uint32(PayloadType_BIN)
+			rq.Protocol = uint32(p.Config.Protocol)
 			rq.Session = &api.Session{SessionId: msg.Conn.Session_id}
 			result := make(chan *api.Reply)
-			p.HandlerRequest(&Payload{Request: &rq, ChReply: result})
+			p.HandlerRequest(&Payload{Request: &rq, ChReply: result, Connection_id: msg.Fd})
 			res := *<-result
 			if res.Status != 0 {
 				res.Msg = api.ResultType(res.Status).String()
 			}
-			p.LogInfo("%v",res)
+			p.LogInfo("%v", res)
 
-			if _buf ,err := GetReplyBuffer(uint32(api.ResultType_SESSION_EXPIRE),msg.MsgType,msg.MsgGroup,msg.MSG_ID,nil,msg.Conn.Client.EncType,msg.Conn.Client.PKey);err == nil {
-				if c,o := p.clients.Load(msg.Fd); o{
-					(*c.(*gnet.Conn)).AsyncWrite(_buf,nil)
+			if _buf, err := GetReplyBuffer(uint32(api.ResultType_SESSION_EXPIRE), msg.MsgType, msg.MsgGroup, msg.MSG_ID, nil, msg.Conn.Client.EncType, msg.Conn.Client.PKey); err == nil {
+				if c, o := p.clients.Load(msg.Fd); o {
+					(*c.(*gnet.Conn)).AsyncWrite(_buf, nil)
 				}
 			}
 		}
@@ -246,4 +248,3 @@ func (p *SocketServer) Close() {
 	p.LogInfo("Close")
 	close(p.Done)
 }
-
