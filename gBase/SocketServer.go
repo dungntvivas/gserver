@@ -69,6 +69,7 @@ func (p *SocketServer) OnOpen(c gnet.Conn) (out []byte, action gnet.Action) {
 	}, &ClientConnection{
 		Fd: c.Fd(),
 	})
+	newConn.Session_id = ""
 	c.SetContext(newConn)
 	p.mu.Lock()
 	p.clients.Store(c.Fd(), &c)

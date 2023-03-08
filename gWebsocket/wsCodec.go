@@ -3,19 +3,20 @@ package gWebsocket
 import (
 	"bytes"
 	"fmt"
+	"io"
+
 	"github.com/gobwas/ws"
 	"github.com/gobwas/ws/wsutil"
 	"github.com/panjf2000/gnet/v2"
 	"github.com/panjf2000/gnet/v2/pkg/logging"
-	"io"
 )
 
 type wsCodec struct {
-	upgraded bool         // 链接是否升级
-	buf      bytes.Buffer // 从实际socket中读取到的数据缓存
-	wsMsgBuf wsMessageBuf // ws 消息缓存
-	IsAuthen bool // kết nối này đã được xác thực hay chưa
-	vAuthorization string // token id
+	upgraded       bool         // 链接是否升级
+	buf            bytes.Buffer // 从实际socket中读取到的数据缓存
+	wsMsgBuf       wsMessageBuf // ws 消息缓存
+	IsAuthen       bool         // kết nối này đã được xác thực hay chưa
+	vAuthorization string       // token id
 }
 
 type wsMessageBuf struct {

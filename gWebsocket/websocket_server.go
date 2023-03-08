@@ -83,7 +83,26 @@ func (p *WsServer) OnShutdown(eng gnet.Engine) {
 func (p *WsServer) OnOpen(c gnet.Conn) (out []byte, action gnet.Action) {
 	p.LogInfo("conn [%v] Open Connection", c.Fd())
 	c.SetContext(&wsCodec{vAuthorization: ""})
+	p.mu.Lock()
+	p.clients.Store(c.Fd(), &c)
+	p.mu.Unlock()
+
 	return
+}
+func (p *WsServer) OnClose(c gnet.Conn, err error) (action gnet.Action) {
+	p.LogInfo("conn [%v] Close", c.Fd())
+	p.mu.Lock()
+	p.clients.Delete(c.Fd())
+	p.mu.Unlock()
+	return gnet.Close
+}
+func (p *WsServer) MarkConnectioIsAuthen(token string, fd int) {
+	p.mu.Lock()
+	if c, ok := p.clients.Load(fd); ok {
+
+		(*c.(*gnet.Conn)).Context().(*wsCodec).vAuthorization = token
+	}
+	p.mu.Unlock()
 }
 func (p *WsServer) OnTraffic(c gnet.Conn) gnet.Action {
 
