@@ -99,7 +99,7 @@ func (p *WsServer) OnClose(c gnet.Conn, err error) (action gnet.Action) {
 func (p *WsServer) MarkConnectioIsAuthen(token string, fd int) {
 	p.mu.Lock()
 	if c, ok := p.clients.Load(fd); ok {
-
+		p.LogInfo("Save vAuthorization %v", token)
 		(*c.(*gnet.Conn)).Context().(*wsCodec).vAuthorization = token
 	}
 	p.mu.Unlock()
