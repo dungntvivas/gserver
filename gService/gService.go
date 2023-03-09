@@ -9,12 +9,10 @@ import (
 	"github.com/golang/protobuf/jsonpb"
 	"gitlab.vivas.vn/go/grpc_api/api"
 	"gitlab.vivas.vn/go/gserver/gBase"
-	"gitlab.vivas.vn/go/gserver/gHTTP"
 	"gitlab.vivas.vn/go/gserver/gRPC"
 	"gitlab.vivas.vn/go/internal/logger"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
-	"google.golang.org/protobuf/types/known/anypb"
 )
 
 type HandlerRequest func(request *api.Request, reply *api.Reply) uint32
@@ -28,11 +26,10 @@ type Service struct {
 	cb             HandlerRequest
 	Operator       sync.Map
 
-	http_server *gHTTP.HTTPServer
 	grpc_server *gRPC.GRPCServer
 }
 
-func NewService(SvName string, _log *logger.Logger, configs ...gBase.ConfigOption) *Service {
+func NewService(SvName string, _log *logger.Logger, config gBase.ConfigOption) *Service {
 	p := &Service{
 		Logger:         _log,
 		Done:           make(chan struct{}),
@@ -42,16 +39,8 @@ func NewService(SvName string, _log *logger.Logger, configs ...gBase.ConfigOptio
 	}
 	signal.Notify(p.interrupt, os.Interrupt)
 	// config server http grpc ...
-	for _, cf := range configs {
-		if cf.Protocol == gBase.RequestProtocol_HTTP { // init http server listen
-			cf.Logger = _log
-			p.http_server = gHTTP.New(cf, p.receiveRequest)
-		} else if cf.Protocol == gBase.RequestProtocol_GRPC {
-			cf.Logger = _log
-			p.grpc_server = gRPC.New(cf, p.receiveRequest)
-		}
-		// other service
-	}
+	config.Logger = _log
+	p.grpc_server = gRPC.New(config, p.receiveRequest)
 
 	return p
 }
@@ -70,10 +59,6 @@ func (p *Service) LogError(format string, args ...interface{}) {
 
 func (p *Service) Start() {
 	/// start server
-	if p.http_server != nil {
-		p.http_server.Serve()
-	}
-
 	if p.grpc_server != nil {
 		p.grpc_server.Serve()
 	}
@@ -97,9 +82,7 @@ loop:
 	p.LogInfo("End Service")
 
 	// STOP SERVER LISTEN
-	if p.http_server != nil {
-		p.http_server.Close()
-	}
+
 	if p.grpc_server != nil {
 		p.grpc_server.Close()
 	}
@@ -122,21 +105,9 @@ loop:
 		}
 	}
 }
-func (p *Service) discoveryService(payload *gBase.Payload) {
-	reply := &api.Reply{
-		Status: 0,
-		Msg:    "OK",
-	}
-	discovery_reply := api.DiscoveryService_Reply{}
-	p.Operator.Range(func(key, value any) bool {
-		discovery_reply.Types = append(discovery_reply.Types, key.(uint32))
-		return true
-	})
-	_discovery_reply, _ := anypb.New(&discovery_reply)
-	reply.Reply = _discovery_reply
-	payload.ChReply <- reply
-}
+
 func (p *Service) processRequest(payload *gBase.Payload) {
+	p.LogInfo("gservice processRequest")
 	reply := &api.Reply{
 		Status: 0,
 		Msg:    "OK",
@@ -159,7 +130,6 @@ func (p *Service) processRequest(payload *gBase.Payload) {
 			reply.Status = uint32(api.ResultType_INTERNAL_SERVER_ERROR)
 			goto on_reply
 		}
-		p.LogDebug("%v", _rq)
 		payload.Request.Request = _rq.Request
 		payload.Request.BinRequest = nil
 	}
