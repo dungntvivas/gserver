@@ -117,12 +117,7 @@ loop:
 			break loop
 		case req := <-p.receiveRequest:
 			// call processRequest
-			if req.Request.Type == 1 {
-				// handler discovery service
-				p.discoveryService(req)
-			} else {
-				p.processRequest(req)
-			}
+			p.processRequest(req)
 
 		}
 	}
