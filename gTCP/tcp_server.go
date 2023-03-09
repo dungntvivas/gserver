@@ -6,17 +6,15 @@ import (
 
 /* PAYLOAD
 
-*/
-
+ */
 
 type TCPServer struct {
 	gBase.SocketServer
 }
+
 func New(config gBase.ConfigOption, chReceiveRequest chan *gBase.Payload) *TCPServer {
 	p := &TCPServer{
-		gBase.NewSocket(config,chReceiveRequest),
+		gBase.NewSocket(config, chReceiveRequest),
 	}
-	return  p
+	return p
 }
-
-

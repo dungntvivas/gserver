@@ -150,15 +150,25 @@ func (p *WsServer) OnTraffic(c gnet.Conn) gnet.Action {
 			}
 			return gnet.None
 		} else if message.OpCode == ws.OpBinary { // binary request  payload
+			// decode use socket payload protocol
+			if _msg := gBase.DecodeData(message.Payload, len(message.Payload)); _msg != nil {
 
+				request := api.Request{
+					PayloadType: uint32(gBase.PayloadType_BIN),
+					Protocol:    uint32(gBase.RequestProtocol_WS),
+					BinRequest:  _msg.Payload,
+					Type:        _msg.MsgType,
+					Group:       api.Group(_msg.MsgGroup),
+					Session:     &api.Session{SessionId: codec.vAuthorization},
+				}
+				p.chReceiveMsg <- &chPayload{
+					request: &request,
+					conn:    &c,
+				}
+			} else {
+				p.LogInfo("Decode Msg Failure")
+			}
 		}
-		//p.LogInfo("conn[%v] receive [op=%v] [msg=%v, len=%d]", c.RemoteAddr().String(), message.OpCode, string(message.Payload), len(message.Payload))
-		//// This is the echo server
-		//err = wsutil.WriteServerMessage(c, message.OpCode, message.Payload)
-		//if err != nil {
-		//	p.LogInfo("conn[%v] [err=%v]", c.RemoteAddr().String(), err.Error())
-		//	return gnet.Close
-		//}
 	}
 	return gnet.None
 }

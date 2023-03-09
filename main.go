@@ -1,12 +1,16 @@
 package main
 
 import (
+	"fmt"
+
+	"gitlab.vivas.vn/go/grpc_api/api"
 	"gitlab.vivas.vn/go/gserver/gBase"
 	"gitlab.vivas.vn/go/gserver/gTCP"
 	"gitlab.vivas.vn/go/gserver/gUDP"
 	"gitlab.vivas.vn/go/gserver/gUDS"
 	"gitlab.vivas.vn/go/gserver/gWebsocket"
 	"gitlab.vivas.vn/go/internal/logger"
+	"google.golang.org/protobuf/proto"
 )
 
 func main() {
@@ -52,8 +56,23 @@ func main() {
 		loop:
 			for {
 				select {
-				case <-chReceiveRequest:
+				case p := <-chReceiveRequest:
 					_logger.Log(logger.Info, "Receive Request")
+					if p.Request.PayloadType == uint32(gBase.PayloadType_BIN) {
+						fmt.Printf("%v\n", p)
+						var rq api.Request
+
+						proto.Unmarshal(p.Request.BinRequest, &rq)
+
+						fmt.Printf("%v\n", rq)
+
+						var rqHl api.Hello_Request
+
+						rq.Request.UnmarshalTo(&rqHl)
+
+						fmt.Printf("%v\n", rqHl.Platform)
+
+					}
 				case <-done:
 					break loop
 				}

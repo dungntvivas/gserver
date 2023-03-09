@@ -2,8 +2,7 @@ package gBase
 
 import (
 	"fmt"
-	"github.com/gobwas/ws"
-	"github.com/gobwas/ws/wsutil"
+
 	"github.com/google/uuid"
 	"github.com/panjf2000/gnet/v2"
 	"gitlab.vivas.vn/go/grpc_api/api"
@@ -46,7 +45,6 @@ import (
 // Nếu được encode Payload bằng XOR
 // b1. Payload được xor với key được client gửi lên ở bước setup connection => tạo ra 1 (msg Payload xor )
 
-
 // Nếu được encode Payload bằng AES
 // tiêu chuẩn được sử dụng AES-CBC-256-PKCS7_PADING
 // b1 . random 1 iv key
@@ -54,8 +52,8 @@ import (
 // b3 . đóng gói iv key này + Payload được aes ở bước 2 , gửi về client
 
 type JSONSocketMessage struct {
-	Type    int    `json:"type"`
-	Group   string `json:"group"`
+	Type  int    `json:"type"`
+	Group string `json:"group"`
 }
 
 type SocketMessage struct {
@@ -66,32 +64,33 @@ type SocketMessage struct {
 	Fd                     int
 	MSG_encode_decode_type Encryption_Type
 	Lable                  []byte // dùng để giải mã,xor key với XOR , là  iv_key với AES , lable_rsa với RSA
-	Conn *Connection
+	Conn                   *Connection
 }
-func (m *SocketMessage)ToProtoModel(src proto.Message) error{
+
+func (m *SocketMessage) ToProtoModel(src proto.Message) error {
 	m.DecodePayloadIfNeed()
 	return proto.Unmarshal(m.Payload, src)
 }
-func (m *SocketMessage)ToRequestProtoModel(src proto.Message) error{
+func (m *SocketMessage) ToRequestProtoModel(src proto.Message) error {
 	request := api.Request{}
-	if err := m.ToProtoModel(&request);err != nil {
+	if err := m.ToProtoModel(&request); err != nil {
 		return err
 	}
-	if err := request.Request.UnmarshalTo(src);err != nil{
+	if err := request.Request.UnmarshalTo(src); err != nil {
 		return err
 	}
 	return nil
 }
-func NewMessage(_payload []byte, _group uint32,_type uint32, _id []byte) *SocketMessage {
+func NewMessage(_payload []byte, _group uint32, _type uint32, _id []byte) *SocketMessage {
 	p := &SocketMessage{
 		Payload:  _payload,
 		MsgGroup: _group,
 		MsgType:  _type,
 		MSG_ID:   _id,
-
 	}
 	return p
 }
+
 // 0,1,2,3 magic 4
 // 4,5,6 size 3
 // 7 group 1
@@ -101,9 +100,9 @@ func NewMessage(_payload []byte, _group uint32,_type uint32, _id []byte) *Socket
 // 16 -> size Payload
 
 // DecodeHeader chuyển data byte về dữ liệu SocketMessage ,MsgSize , Lable size
-func DecodeData(data []byte,n int) *SocketMessage{
+func DecodeData(data []byte, n int) *SocketMessage {
 	header_size := 0x10
-	if(len(data) < header_size){
+	if len(data) < header_size {
 		fmt.Printf("%v", "Header size Invalid \n")
 		return nil
 	}
@@ -128,176 +127,131 @@ func DecodeData(data []byte,n int) *SocketMessage{
 	if _hasEnc {
 		_enc_type := uint8(data[9] & 0x60)
 		_socketMSG.MSG_encode_decode_type = Encryption_Type(_enc_type)
-		if (_socketMSG.MSG_encode_decode_type == Encryption_AES || _socketMSG.MSG_encode_decode_type == Encryption_RSA){
+		if _socketMSG.MSG_encode_decode_type == Encryption_AES || _socketMSG.MSG_encode_decode_type == Encryption_RSA {
 			// get iv_size from header
 			lable_size = int(data[9]&0x1F) << 6
 			lable_size = lable_size | (int(data[10]&0xFC) >> 2)
 			_socketMSG.Payload = data[header_size+lable_size:]
-			_socketMSG.Lable = data[header_size:header_size+lable_size]
-		}else{
+			_socketMSG.Lable = data[header_size : header_size+lable_size]
+		} else {
 			_socketMSG.Payload = data[header_size:n]
 		}
-	}else{
+	} else {
 		_socketMSG.Payload = data[header_size:n]
 	}
 	return &_socketMSG
 }
 
-func DecodeWebsocketPacket(log *logger.Logger,c gnet.Conn) *SocketMessage {
-	msg, op, err := wsutil.ReadClientData(c)
-	if err != nil {
-		log.Log(logger.Info,"conn[%v] err=[%v]", c.RemoteAddr().String(), err.Error())
-		return nil
-	}
-	if op == ws.OpBinary { // accept json or bin data prot
-		/// parser msg to proto
-		if len(msg) >= 16 {
-			if _msg := DecodeData(msg,len(msg)); _msg != nil {
-				_msg.Conn = c.Context().(*Connection)
-				_msg.Fd = c.Fd()
-				return _msg
-			}
-		}
-
-	}else if op == ws.OpText{
-		// convert to proto model
-		log.Log(logger.Info,"%s",string(msg))
-		return nil
-		//JSM := JSONSocketMessage{}
-		//if err := json.Unmarshal(msg,&JSM);err != nil {
-		//	log.Log(logger.Info,"conn[%v] json.Unmarshal=[%v]", c.RemoteAddr().String(), err.Error())
-		//	return nil
-		//}
-		//log.Log(logger.Info,"group %v - Type %v",JSM.Group,JSM.Type)
-		//
-		//newMsg := &SocketMessage{
-		//	MsgType:  uint32(JSM.Type),
-		//	MsgGroup: uint32(api.Group_value[JSM.Group]),
-		//	Fd: c.Fd(),
-		//	Conn: c.Context().(*Connection),
-		//	Payload:msg,
-		//}
-		//
-		//return newMsg
-
-	}else{
-		log.Log(logger.Info,"conn[%v] err=[%s]", c.RemoteAddr().String(), "Op Invalid")
-		return nil
-	}
-
-
-	return nil
-}
-func DecodePacket(log *logger.Logger,c gnet.Conn) []*SocketMessage {
+func DecodePacket(log *logger.Logger, c gnet.Conn) []*SocketMessage {
 	header_size := 0x10
 	models := []*SocketMessage{}
 
 	/// Check client
 	conn := c.Context().(*Connection)
-	if (conn == nil){
-		log.Log(logger.Info,"Connection Null")
+	if conn == nil {
+		log.Log(logger.Info, "Connection Null")
 		return nil
 	}
-	loop:
-		for{
-			if c.InboundBuffered() < header_size { // tối thiểu 16 byte header
-				break loop
-			}
-			header, err := c.Peek(header_size) // lấy ra 16 byte header
-			if err != nil {
+loop:
+	for {
+		if c.InboundBuffered() < header_size { // tối thiểu 16 byte header
+			break loop
+		}
+		header, err := c.Peek(header_size) // lấy ra 16 byte header
+		if err != nil {
+			c.Peek(-1) // xóa buffer
+			break loop
+		}
+		if header[0] != 0x82 || header[1] != 0x68 || header[2] != 0x80 || header[3] != 0x65 { // RDPA
+			c.Discard(-1) // clear buffer
+			log.Log(logger.Info, "Magic byte not math %v", header)
+			break loop
+		}
+		msgSize := (int(header[4]) << 0x10) + (int(header[5]) << 0x8) + int(header[6])
+		if msgSize > c.InboundBuffered() {
+			log.Log(logger.Info, "Buffer size truncate")
+			break loop
+		}
+		c.Discard(header_size) // xóa header ra khỏi buffer
+		payload_size := msgSize - header_size
+		raw_payload, err := c.Peek(payload_size) /// read Payload content
+		if err != nil {
+			c.Peek(-1) // xóa buffer
+			break loop
+		}
+		c.Discard(payload_size)
+
+		_socketMSG := SocketMessage{
+			Fd: c.Fd(),
+		}
+		if ct := c.Context().(*Connection); ct != nil {
+			_socketMSG.Conn = ct
+		}
+		/// GROUP
+		_socketMSG.MsgGroup = uint32(header[7])
+		///
+		_socketMSG.MsgType = uint32(header[8])
+		/// MSG ID
+		_socketMSG.MSG_ID = header[11:16]
+		_hasEnc := (header[9] & 0x80) == 0x80
+		if _hasEnc {
+			if conn.Server.IsSetupConnection == false {
+				/// client chưa setup encode
+				log.Log(logger.Info, "server Decode chưa được cài đặt")
 				c.Peek(-1) // xóa buffer
 				break loop
 			}
-			if header[0] != 0x82 || header[1] != 0x68 || header[2] != 0x80 || header[3] != 0x65 { // RDPA
-				c.Discard(-1) // clear buffer
-				log.Log(logger.Info,"Magic byte not math %v",header)
-				break loop
-			}
-			msgSize := (int(header[4]) << 0x10) + (int(header[5]) << 0x8) + int(header[6])
-			if msgSize > c.InboundBuffered() {
-				log.Log(logger.Info,"Buffer size truncate")
-				break loop
-			}
-			c.Discard(header_size) // xóa header ra khỏi buffer
-			payload_size := msgSize - header_size
-			raw_payload,err := c.Peek(payload_size) /// read Payload content
-			if err != nil {
+			_enc_type := uint8(header[9] & 0x60)
+			if conn.Server.DecType != Encryption_Type(_enc_type) {
+				log.Log(logger.Info, "Decode không khớp với setup decode của server")
 				c.Peek(-1) // xóa buffer
 				break loop
 			}
-			c.Discard(payload_size)
+			_socketMSG.MSG_encode_decode_type = Encryption_Type(_enc_type)
+			if conn.Server.DecType == Encryption_AES {
+				// get iv_size from header
+				_iv_size := int(header[9]&0x1F) << 6
+				_iv_size = _iv_size | (int(header[10]&0xFC) >> 2)
+				_iv_key := raw_payload[0:_iv_size]
+				_socketMSG.Lable = _iv_key
+				_socketMSG.Payload = raw_payload[_iv_size:]
 
-			_socketMSG := SocketMessage{
-				Fd: c.Fd(),
-			}
-			if ct := c.Context().(*Connection);ct != nil{
-				_socketMSG.Conn = ct
-			}
-			/// GROUP
-			_socketMSG.MsgGroup = uint32(header[7])
-			///
-			_socketMSG.MsgType = uint32(header[8])
-			/// MSG ID
-			_socketMSG.MSG_ID = header[11:16]
-			_hasEnc := (header[9] & 0x80) == 0x80
-			if _hasEnc {
-				if conn.Server.IsSetupConnection == false {
-					/// client chưa setup encode
-					log.Log(logger.Info,"server Decode chưa được cài đặt")
-					c.Peek(-1) // xóa buffer
-					break loop
-				}
-				_enc_type := uint8(header[9] & 0x60)
-				if(conn.Server.DecType != Encryption_Type(_enc_type)){
-					log.Log(logger.Info,"Decode không khớp với setup decode của server")
-					c.Peek(-1) // xóa buffer
-					break loop
-				}
-				_socketMSG.MSG_encode_decode_type = Encryption_Type(_enc_type)
-				if (conn.Server.DecType == Encryption_AES){
-					// get iv_size from header
-					_iv_size := int(header[9]&0x1F) << 6
-					_iv_size = _iv_size | (int(header[10]&0xFC) >> 2)
-					_iv_key := raw_payload[0:_iv_size]
-					_socketMSG.Lable = _iv_key
-					_socketMSG.Payload = raw_payload[_iv_size:]
+			} else if conn.Server.DecType == Encryption_RSA { /// decode với private key của server
+				_raa_key_size := int(header[9]&0x1F) << 6
+				_raa_key_size = _raa_key_size | (int(header[10]&0xFC) >> 2)
+				_rsa_key := raw_payload[0:_raa_key_size]
+				_socketMSG.Lable = _rsa_key
+				_socketMSG.Payload = raw_payload[_raa_key_size:]
 
-				}else if(conn.Server.DecType == Encryption_RSA){ /// decode với private key của server
-					_raa_key_size := int(header[9]&0x1F) << 6
-					_raa_key_size = _raa_key_size | (int(header[10]&0xFC) >> 2)
-					_rsa_key := raw_payload[0:_raa_key_size]
-					_socketMSG.Lable = _rsa_key
-					_socketMSG.Payload = raw_payload[_raa_key_size:]
-
-				}else if conn.Server.DecType == Encryption_XOR{ /// với xor ko có Lable đi kèm
-					_socketMSG.Lable = conn.Server.PKey
-					_socketMSG.Payload = raw_payload
-				}else{
-					_socketMSG.Payload = raw_payload
-				}
-
-			}else{
-				if _socketMSG.MsgGroup != uint32(api.Group_CONNECTION) && conn.Server.IsSetupConnection == false{
-					log.Log(logger.Info,"Kết nối chưa xác lập encode-decode")
-					c.Peek(-1) // xóa buffer
-					break loop
-				}
+			} else if conn.Server.DecType == Encryption_XOR { /// với xor ko có Lable đi kèm
+				_socketMSG.Lable = conn.Server.PKey
+				_socketMSG.Payload = raw_payload
+			} else {
 				_socketMSG.Payload = raw_payload
 			}
-			models = append(models, &_socketMSG)
+
+		} else {
+			if _socketMSG.MsgGroup != uint32(api.Group_CONNECTION) && conn.Server.IsSetupConnection == false {
+				log.Log(logger.Info, "Kết nối chưa xác lập encode-decode")
+				c.Peek(-1) // xóa buffer
+				break loop
+			}
+			_socketMSG.Payload = raw_payload
 		}
+		models = append(models, &_socketMSG)
+	}
 
 	return models
 }
 
 func (p *SocketMessage) DecodePayloadIfNeed() {
-	if(p.MSG_encode_decode_type != Encryption_NONE){
-		if(p.MSG_encode_decode_type == Encryption_XOR){ /// XOR -> RAW
-			p.Payload = xor.EncryptDecrypt(p.Payload,p.Lable)
-		}else if(p.MSG_encode_decode_type == Encryption_RSA){
-			xor_key ,_ := p.Conn.Server.Rsa.RSA_PKCS1_Decrypt(p.Lable)
-			p.Payload = xor.EncryptDecrypt(p.Payload,xor_key)
-		}else if(p.MSG_encode_decode_type == Encryption_AES){
+	if p.MSG_encode_decode_type != Encryption_NONE {
+		if p.MSG_encode_decode_type == Encryption_XOR { /// XOR -> RAW
+			p.Payload = xor.EncryptDecrypt(p.Payload, p.Lable)
+		} else if p.MSG_encode_decode_type == Encryption_RSA {
+			xor_key, _ := p.Conn.Server.Rsa.RSA_PKCS1_Decrypt(p.Lable)
+			p.Payload = xor.EncryptDecrypt(p.Payload, xor_key)
+		} else if p.MSG_encode_decode_type == Encryption_AES {
 			p.Payload, _ = aes.CBCDecrypter(p.Payload, p.Conn.Server.PKey, p.Lable)
 		}
 		p.MSG_encode_decode_type = Encryption_NONE
@@ -305,11 +259,9 @@ func (p *SocketMessage) DecodePayloadIfNeed() {
 
 }
 
-
-
 func (p *SocketMessage) Encode(encodeType Encryption_Type, pKey []byte) ([]byte, error) { // sử dụng public key của client để encode Payload
 
-	out_buf := []byte{0x82 ,0x68 ,0x80 ,0x65 ,0x0, 0x0, 0x0, 0x0, 0x0, 0x0,0x0}
+	out_buf := []byte{0x82, 0x68, 0x80, 0x65, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0}
 	var msg_id_size = 5
 
 	size := len(out_buf)
@@ -334,26 +286,26 @@ func (p *SocketMessage) Encode(encodeType Encryption_Type, pKey []byte) ([]byte,
 	if encodeType == Encryption_NONE { // Payload raw
 		size += len(p.Payload)
 		out_buf = append(out_buf, p.Payload...)
-	}else if encodeType == Encryption_XOR { // xor Payload
+	} else if encodeType == Encryption_XOR { // xor Payload
 		size += len(p.Payload)
 		out_buf = append(out_buf, xor.EncryptDecrypt(p.Payload, pKey)...)
-	}else if encodeType == Encryption_AES {
+	} else if encodeType == Encryption_AES {
 		iv, err := aes.IV_RANDOM()
 		if err != nil {
 			return nil, err
 		}
 		payload_aes, err := aes.CBCEncrypterWithClientKey(pKey, iv, p.Payload)
 		if err != nil {
-			return nil ,err
+			return nil, err
 		}
 		size += len(iv)
 		size += len(payload_aes)
 		iv_size := len(iv)
 		out_buf[10] = out_buf[10] | byte((iv_size&0x3F)<<2) // 6 bit đầu của byte 7
-		out_buf[9] = out_buf[9] | byte((iv_size>>6)&0x1F) // 5 bit cuối của byte 6
+		out_buf[9] = out_buf[9] | byte((iv_size>>6)&0x1F)   // 5 bit cuối của byte 6
 		out_buf = append(out_buf, iv...)
 		out_buf = append(out_buf, payload_aes...)
-	}else if encodeType == Encryption_RSA { // encode với public key của client
+	} else if encodeType == Encryption_RSA { // encode với public key của client
 		new_uid := uuid.New()
 		lable := []byte{82, 68, 80, 65}
 		lable = append(lable, new_uid[:]...)
@@ -372,13 +324,11 @@ func (p *SocketMessage) Encode(encodeType Encryption_Type, pKey []byte) ([]byte,
 		// size Lable
 		lable_size := len(lable_rsa)
 		out_buf[10] = out_buf[10] | byte((lable_size&0x3F)<<2) // 6 bit đầu của byte 7
-		out_buf[9] = out_buf[9] | byte((lable_size>>6)&0x1F) // 5 bit cuối của byte 6
+		out_buf[9] = out_buf[9] | byte((lable_size>>6)&0x1F)   // 5 bit cuối của byte 6
 
 		out_buf = append(out_buf, lable_rsa...)
 		out_buf = append(out_buf, xor_payload...)
 	}
-
-
 
 	// SET SIZE 3 byte
 	out_buf[4] = byte((size >> 0x10) & 0xFF)

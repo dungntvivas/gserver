@@ -107,7 +107,7 @@ loop:
 }
 
 func (p *Service) processRequest(payload *gBase.Payload) {
-	p.LogInfo("gservice processRequest")
+
 	reply := &api.Reply{
 		Status: 0,
 		Msg:    "OK",

@@ -9,6 +9,7 @@ import (
 	"github.com/gobwas/ws/wsutil"
 	"github.com/panjf2000/gnet/v2"
 	"github.com/panjf2000/gnet/v2/pkg/logging"
+	"gitlab.vivas.vn/go/gserver/gBase"
 )
 
 type wsCodec struct {
@@ -17,6 +18,9 @@ type wsCodec struct {
 	wsMsgBuf       wsMessageBuf // ws 消息缓存
 	IsAuthen       bool         // kết nối này đã được xác thực hay chưa
 	vAuthorization string       // token id
+
+	Client *gBase.ClientConnection
+	Server *gBase.ServerConnection
 }
 
 type wsMessageBuf struct {
