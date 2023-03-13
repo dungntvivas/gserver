@@ -168,6 +168,7 @@ func (p *WsServer) OnTraffic(c gnet.Conn) gnet.Action {
 			} else {
 				p.LogInfo("Decode Msg Failure")
 			}
+			return gnet.None
 		}
 	}
 	return gnet.None
