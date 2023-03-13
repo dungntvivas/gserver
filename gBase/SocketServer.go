@@ -3,6 +3,7 @@ package gBase
 import (
 	"bytes"
 	"crypto/rand"
+	"fmt"
 	"github.com/gobwas/ws/wsutil"
 	"github.com/google/uuid"
 	"net"
@@ -247,7 +248,12 @@ func (p *SocketServer) onReceiveRequest(msg *SocketMessage) {
 			if _buf, err := GetReplyBuffer(uint32(api.ResultType_REQUEST_INVALID), msg.MsgType, msg.MsgGroup, msg.MSG_ID, nil, Encryption_NONE, nil); err == nil {
 				if c, o := p.clients.Load(msg.Fd); o {
 					if p.Config.Protocol == RequestProtocol_WS {
-						wsutil.WriteServerMessage((*c.(*gnet.Conn)), ws.OpBinary, _buf)
+						if(msg.TypePayload == PayloadType_JSON){
+							wsutil.WriteServerMessage((*c.(*gnet.Conn)), ws.OpText, []byte(fmt.Sprintf("{\"status\":%d, \"msg\":\"%s\"}", uint32(api.ResultType_REQUEST_INVALID), "REQUEST_INVALID")))
+						}else{
+							wsutil.WriteServerMessage((*c.(*gnet.Conn)), ws.OpBinary, _buf)
+						}
+
 					}else{
 						(*c.(*gnet.Conn)).AsyncWrite(_buf, nil)
 					}
