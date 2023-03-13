@@ -275,7 +275,7 @@ func (p *SocketServer) onReceiveRequest(msg *SocketMessage) {
 		if c, o := p.clients.Load(msg.Fd); o {
 			if p.Config.Protocol == RequestProtocol_WS {
 				if(msg.TypePayload == PayloadType_JSON){
-					wsutil.WriteServerMessage((*c.(*gnet.Conn)), ws.OpText, _buf)
+					wsutil.WriteServerMessage((*c.(*gnet.Conn)), ws.OpText, res.BinReply)
 				}else{
 					wsutil.WriteServerMessage((*c.(*gnet.Conn)), ws.OpBinary, _buf)
 				}
