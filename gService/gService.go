@@ -116,7 +116,7 @@ func (p *Service) processRequest(payload *gBase.Payload) {
 		/// convert bin_request to proto request
 		var _rq api.Request
 		if err := proto.Unmarshal(payload.Request.BinRequest, &_rq); err != nil {
-			p.LogError("%v", err.Error())
+			p.LogError("proto.Unmarshal %v", err.Error())
 			reply.Status = uint32(api.ResultType_INTERNAL_SERVER_ERROR)
 			goto on_reply
 		}
@@ -126,7 +126,7 @@ func (p *Service) processRequest(payload *gBase.Payload) {
 		/// convert bin_json to proto request
 		var _rq api.Request
 		if err := jsonpb.UnmarshalString(string(payload.Request.BinRequest), &_rq); err != nil {
-			p.LogError("%v", err.Error())
+			p.LogError("jsonpb.UnmarshalString %v", err.Error())
 			reply.Status = uint32(api.ResultType_INTERNAL_SERVER_ERROR)
 			goto on_reply
 		}
