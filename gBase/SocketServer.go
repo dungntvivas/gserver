@@ -112,6 +112,7 @@ func (p *SocketServer) MarkConnectioIsAuthen(token string, fd int) {
 	p.mu.Lock()
 	if c, ok := p.clients.Load(fd); ok {
 		(*c.(*gnet.Conn)).Context().(*Connection).Client.IsAuthen = true
+		(*c.(*gnet.Conn)).Context().(*Connection).Client.IsSetupConnection = true
 		(*c.(*gnet.Conn)).Context().(*Connection).Session_id = token
 	}
 	p.mu.Unlock()
@@ -220,15 +221,17 @@ func (p *SocketServer)onClientKeepAlive(msg *SocketMessage){
 		}
 	}
 }
-func (p *SocketServer) onReceiveRequest(msg *SocketMessage) {
 
+
+
+
+func (p *SocketServer) onReceiveRequest(msg *SocketMessage) {
 
 	if msg.MsgType == uint32(api.TYPE_ID_REQUEST_HELLO) && msg.MsgGroup == uint32(api.Group_CONNECTION){
 		p.onSetupConnection(msg)
 		return
 	}
-
-	if msg.MSG_encode_decode_type != msg.Conn.Server.DecType || !msg.Conn.Client.IsSetupConnection {
+	if (msg.MSG_encode_decode_type != msg.Conn.Server.DecType || !msg.Conn.Client.IsSetupConnection) && msg.TypePayload == PayloadType_BIN {
 		p.LogError("Connection Decode Invalid [server %v - payload %v]",msg.Conn.Server.DecType,msg.MSG_encode_decode_type)
 		return
 	}
