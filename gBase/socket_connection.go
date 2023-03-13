@@ -32,6 +32,9 @@ type ClientConnection struct {
 	Fd       int  // id của kết nối đối với os ( udp không xác định được fd)
 	IsAuthen bool // kết nối này đã được xác thực hay chưa
 }
+func (p *ClientConnection)isOK() bool{
+	return p.IsAuthen && p.IsSetupConnection
+}
 type ServerConnection struct {
 	DecType           Encryption_Type
 	PKey              []byte
@@ -52,6 +55,9 @@ type Connection struct {
 	upgraded bool         // 链接是否升级
 	buf      bytes.Buffer // 从实际socket中读取到的数据缓存
 	wsMsgBuf wsMessageBuf // ws 消息缓存
+}
+func (c *Connection)isOK() bool {
+	return len(c.Session_id) != 0 && c.Client.isOK()
 }
 
 // websocket upgrade connection
