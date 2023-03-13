@@ -257,7 +257,6 @@ func (p *SocketServer) onReceiveRequest(msg *SocketMessage) {
 			return
 		}
 	}
-
 	rq := api.Request{}
 	rq.Type = msg.MsgType
 	rq.Group = api.Group(msg.MsgGroup)
@@ -271,7 +270,8 @@ func (p *SocketServer) onReceiveRequest(msg *SocketMessage) {
 	if res.Status != 0 {
 		res.Msg = api.ResultType(res.Status).String()
 	}
-	if _buf, err := GetReplyBuffer(uint32(api.ResultType_SESSION_EXPIRE), msg.MsgType, msg.MsgGroup, msg.MSG_ID, nil, msg.Conn.Client.EncType, msg.Conn.Client.PKey); err == nil {
+
+	if _buf, err := GetReplyBuffer(res.Status , msg.MsgType, msg.MsgGroup, msg.MSG_ID, &res, msg.Conn.Client.EncType, msg.Conn.Client.PKey); err == nil {
 		if c, o := p.clients.Load(msg.Fd); o {
 			if p.Config.Protocol == RequestProtocol_WS {
 				if(msg.TypePayload == PayloadType_JSON){
