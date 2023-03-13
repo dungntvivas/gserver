@@ -3,11 +3,13 @@ package gBase
 import (
 	"bytes"
 	"crypto/rand"
+	"encoding/json"
 	"net"
 	"runtime"
 	"sync"
 	"time"
 
+	"github.com/gobwas/ws"
 	"github.com/google/uuid"
 	"github.com/panjf2000/gnet/v2"
 	"gitlab.vivas.vn/go/grpc_api/api"
@@ -23,6 +25,10 @@ type SocketServer struct {
 	chReceiveMsg chan *SocketMessage
 	clients      sync.Map
 	mu           sync.Mutex
+}
+type APIGenerated struct {
+	Type  int    `json:"type"`
+	Group string `json:"group"`
 }
 
 func NewSocket(config ConfigOption, chReceiveRequest chan *Payload) SocketServer {
@@ -120,11 +126,47 @@ func (p *SocketServer) OnClose(c gnet.Conn, err error) (action gnet.Action) {
 }
 
 func (p *SocketServer) OnTraffic(c gnet.Conn) gnet.Action {
-	msgs := DecodePacket(p.Config.Logger, c)
-	for i := range msgs {
-		p.chReceiveMsg <- msgs[i]
+	if p.Config.Protocol != RequestProtocol_WS {
+		codec := c.Context().(*Connection)
+		if codec.readBufferBytes(c) == gnet.Close {
+			return gnet.Close
+		}
+		ok, _ := codec.upgrade(c)
+		if !ok {
+			p.LogError("Update http to websocket error")
+			return gnet.Close
+		}
+		if codec.buf.Len() <= 0 {
+			return gnet.None
+		}
+		messages, err := codec.wsDecode(c)
+		if err != nil {
+			return gnet.Close
+		}
+		if messages == nil {
+			return gnet.None
+		}
+		for _, message := range messages {
+			if message.OpCode == ws.OpText { /// json payload
+				rq := APIGenerated{}
+				if err := json.Unmarshal(message.Payload, &rq); err != nil {
+					p.LogError("json.Unmarshal Error %v", err.Error())
+					continue
+				}
+
+			} else if message.OpCode == ws.OpBinary { // binary request  payload
+				// convert socketmessage
+			}
+		}
+		return gnet.None
+	} else {
+		msgs := DecodePacket(p.Config.Logger, c)
+		for i := range msgs {
+			p.chReceiveMsg <- msgs[i]
+		}
+		return gnet.None
+
 	}
-	return gnet.None
 }
 func (p *SocketServer) receiveMessage() {
 loop:
