@@ -54,6 +54,7 @@ func (p *SocketServer) Serve() {
 	} else if p.Config.Protocol == RequestProtocol_UDS {
 		protocol = "unix://"
 	}
+	p.LogInfo("Start %v server ", p.Config.ServerName)
 	go gnet.Run(p, protocol+p.Config.Addr, gnet.WithMulticore(true), gnet.WithReusePort(true))
 	for i := 0; i < runtime.NumCPU()*2; i++ {
 		go p.receiveMessage()
