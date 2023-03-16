@@ -10,7 +10,7 @@ là project được xây dựng trên ngôn ngữ go , Template khung để d�
 * Hỗ trợ tạo dựng máy chủ WS
 * Hỗ trợ tạo dựng máy chủ UDS
 
-## Ví dụ để khởi tạo một máy chủ microservice
+## Ví dụ để khởi tạo một máy chủ microservice grpc 
 
 ```go
 package main
