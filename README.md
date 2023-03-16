@@ -45,7 +45,7 @@ func NewEchoServer() (*EchoServer, bool) {
 	}
 	p.service.SvName = "Echo Server"
 	p.service.SetCallBackRequest(p.HanderRequest)
-
+	go p.run()
 	return &p,true
 }
 func (p *EchoServer) run() {
