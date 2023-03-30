@@ -25,8 +25,9 @@ type Service struct {
 	SvName         string
 	cb             HandlerRequest
 	Operator       sync.Map
-
-	grpc_server *gRPC.GRPCServer
+	grpc_server    *gRPC.GRPCServer
+	gw_server      api.APIClient
+	gw_enable 	   bool
 }
 
 func NewService(SvName string, _log *logger.Logger, config gBase.ConfigOption) *Service {
@@ -41,9 +42,26 @@ func NewService(SvName string, _log *logger.Logger, config gBase.ConfigOption) *
 	// config server http grpc ...
 	config.Logger = _log
 	p.grpc_server = gRPC.New(config, p.receiveRequest)
-
+	var err error
+	if config.GW != nil && len(config.GW) != 0 {
+		p.gw_server, err = gRPC.NewClientConn("gw", "gw.com.vivas.vn",config.GW...)
+		if err != nil {
+			return nil
+		}
+		p.gw_enable = true
+	}
 	return p
 }
+
+func (p *Service)PushMessage(msg api.Receive){
+	if !p.gw_enable{
+		return
+	}
+
+	//gRPC.MakeRpcRequest(p.gw_server,)
+
+}
+
 func (p *Service) SetCallBackRequest(cb HandlerRequest) {
 	p.cb = cb
 }

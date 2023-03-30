@@ -64,6 +64,7 @@ func (s Encryption_Type) String() string {
 	}
 }
 
+
 type ConfigOption struct {
 	Done       *chan struct{}
 	Logger     *logger.Logger
@@ -72,6 +73,7 @@ type ConfigOption struct {
 	ServerName string
 	Protocol   RequestProtocol
 	EncodeType Encryption_Type
+	GW 		   []string
 }
 
 var DefaultHttpConfigOption = ConfigOption{
