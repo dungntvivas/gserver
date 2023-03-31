@@ -23,9 +23,14 @@ type SocketServer struct {
 	gnet.BuiltinEventEngine
 	lis          net.Listener
 	Done         chan struct{}
-	chReceiveMsg chan *SocketMessage
-	clients      sync.Map
+
+	clients      sync.Map // FD ==> Connection ( 1 connection chứa thông tin kết nối )
+	tokens       sync.Map // token ==> FD ( 1 token có nhiều connection )
+	users 		 sync.Map // user ==> TOKEN ( 1 user có nhiều token )
 	mu           sync.Mutex
+	// out
+	chReceiveMsg chan *SocketMessage
+    // in
 }
 type APIGenerated struct {
 	Type  int    `json:"type"`
@@ -110,12 +115,15 @@ func (p *SocketServer) SendHelloMsg(newConn *Connection, _c *gnet.Conn) {
 	(*_c).AsyncWrite(out, nil)
 }
 
-func (p *SocketServer) MarkConnectioIsAuthen(token string, fd int) {
+func (p *SocketServer) MarkConnectioIsAuthen(token string,user_id string, fd int) {
 	p.mu.Lock()
 	if c, ok := p.clients.Load(fd); ok {
 		(*c.(*gnet.Conn)).Context().(*Connection).Client.IsAuthen = true
 		(*c.(*gnet.Conn)).Context().(*Connection).Client.IsSetupConnection = true
 		(*c.(*gnet.Conn)).Context().(*Connection).Session_id = token
+
+
+
 	}
 	p.mu.Unlock()
 }

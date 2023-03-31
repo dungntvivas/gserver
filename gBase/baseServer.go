@@ -40,6 +40,9 @@ type Payload struct {
 	//
 	Connection_id int
 }
+type PayloadPush struct {
+
+}
 
 type Encryption_Type uint8
 

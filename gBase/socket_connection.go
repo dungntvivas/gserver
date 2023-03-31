@@ -29,7 +29,7 @@ type ClientConnection struct {
 	Platfrom          int32
 	IsSetupConnection bool
 
-	Fd       int  // id của kết nối đối với os ( udp không xác định được fd)
+	Fd       int  // id của kết nối đối với os ( udp không xác định được fd) == connection ID
 	IsAuthen bool // kết nối này đã được xác thực hay chưa
 }
 func (p *ClientConnection)isOK() bool{
