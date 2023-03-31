@@ -85,6 +85,11 @@ func (p *Service)PushMessage(pType Push_Type,receiver []string,ignore_Type Push_
 		p.LogError("Send Push Error %v",err.Error())
 		return false
 	}
+	_rq.Request ,err = anypb.New(&_rq_push)
+	if err != nil{
+		p.LogError("Send Push Error %v",err.Error())
+		return false
+	}
 	_, err = gRPC.MakeRpcRequest(p.gw_server, &_rq)
 	if err != nil {
 		p.LogError("Send Push Error %v",err.Error())
