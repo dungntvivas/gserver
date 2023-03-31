@@ -4,19 +4,17 @@ import (
 	"bytes"
 	"crypto/rand"
 	"fmt"
-	"github.com/gobwas/ws/wsutil"
-	"net"
-	"runtime"
-	"sync"
-	"time"
-
 	"github.com/gobwas/ws"
+	"github.com/gobwas/ws/wsutil"
 	"github.com/panjf2000/gnet/v2"
 	"gitlab.vivas.vn/go/grpc_api/api"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
+	"net"
+	"runtime"
+	"sync"
+	"time"
 )
-
 type SocketServer struct {
 	GServer
 	gnet.BuiltinEventEngine
@@ -24,13 +22,13 @@ type SocketServer struct {
 	Done         chan struct{}
 
 	mu           sync.Mutex
-	clients      sync.Map // FD ==> Connection ( 1 connection chứa thông tin kết nối )
+	clients      sync.Map // FD ==> Connection ( 1 connection chứa thông tin kết nối ) client_id has connection
 
-	mu_token     sync.Mutex
-	tokens       sync.Map // token ==> FD ( 1 token có nhiều connection )
+	mu_token sync.Mutex
+	sessions sync.Map // token ==> FD ( 1 token có nhiều connection ) session_id has client_id
 
 	mu_user      sync.Mutex
-	users 		 sync.Map // user ==> TOKEN ( 1 user có nhiều token )
+	users 		 sync.Map // user ==> TOKEN ( 1 user có nhiều token ) user_id has session_id
 
 	// out
 	chReceiveMsg chan *SocketMessage
@@ -40,7 +38,6 @@ type APIGenerated struct {
 	Type  int    `json:"type"`
 	Group string `json:"group"`
 }
-
 func NewSocket(config ConfigOption, chReceiveRequest chan *Payload) SocketServer {
 
 	b := GServer{
@@ -237,6 +234,79 @@ func (p *SocketServer) onReceiveRequest(msg *SocketMessage) {
 			}
 		}
 	}
+}
+func (p *SocketServer) PushReceive(pType Push_Type,receiver []string,ignore_Type Push_Type,ignore_receiver string,msg_type uint32,msg []byte){
+	if pType == Push_Type_ALL {
+		/// push all user
+		p.users.Range(func(key, value any) bool {
+			if ignore_Type == Push_Type_USER {
+				/// check bỏ qua ko push
+				if key.(string) != ignore_receiver {
+					p.pushToUser(key.(string),ignore_Type,ignore_receiver,msg_type,msg)
+				}
+			}else{
+				p.pushToUser(key.(string),ignore_Type,ignore_receiver,msg_type,msg)
+			}
+			return true
+		})
+	}else if pType == Push_Type_USER{
+		/// push to user
+		for _, s := range receiver {
+			p.pushToUser(s,ignore_Type,ignore_receiver,msg_type,msg)
+		}
+	}else if pType == Push_Type_SESSION {
+		/// push to session
+		for _, s := range receiver {
+			p.pushToSession(s,ignore_Type,ignore_receiver,msg_type,msg)
+		}
+	}else {
+		/// push to connection
+		for _, s := range receiver {
+			p.pushToConnection(s,msg_type,msg)
+		}
+	}
+	//MARK PUSH TO OTHER GATEWAY
+}
+func (p *SocketServer) pushToUser(user_id string,ignore_Type Push_Type,ignore_receiver string,msg_type uint32,msg []byte){
+	/// Lấy danh sách session của 1 user
+
+	sessions,_ := p.users.Load(user_id)
+	for _, s := range sessions.([]string) {
+		if ignore_Type == Push_Type_SESSION {
+			if s != ignore_receiver {
+				p.pushToSession(s,ignore_Type,ignore_receiver,msg_type,msg)
+			}
+		}else{
+			p.pushToSession(s,ignore_Type,ignore_receiver,msg_type,msg)
+		}
+	}
+}
+func (p *SocketServer) pushToSession(session_id string,ignore_Type Push_Type,ignore_receiver string,msg_type uint32,msg []byte){
+	/// Lấy danh sách connection của 1 session
+	connections,_ := p.sessions.Load(session_id)
+	for _, s := range connections.([]string) {
+		if ignore_Type == Push_Type_CONNECTION {
+			if s != ignore_receiver {
+				p.pushToConnection(s,msg_type,msg)
+			}
+		}else{
+			p.pushToConnection(s,msg_type,msg)
+		}
+	}
+}
+func (p *SocketServer) pushToConnection(connection_id string,msg_type uint32,msg []byte){
+	/// lấy kết nối qua fd(connection_id) và thực hiện đóng gói đẩy msg
+	p.mu.Lock()
+	if c, ok := p.clients.Load(connection_id); ok {
+		p.mu.Unlock()
+		connection := (*c.(*gnet.Conn)).Context().(*Connection)
+		if connection.Client.IsAuthen {
+
+		}
+	}else{
+		p.mu.Unlock()
+	}
+
 }
 func (p *SocketServer)onSetupConnection(msg *SocketMessage)  {
 	hlRequest := api.Hello_Request{}

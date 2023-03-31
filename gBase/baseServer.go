@@ -86,6 +86,27 @@ func (s Encryption_Type) String() string {
 }
 
 
+type Push_Type uint8
+const (
+	Push_Type_ALL  Push_Type = 0x2
+	Push_Type_USER  Push_Type = 0x4
+	Push_Type_SESSION  Push_Type = 0x8
+	Push_Type_CONNECTION Push_Type = 0x10
+)
+func (s Push_Type) Push_Type_to_proto_type() api.PushReceive_PUSH_TYPE {
+	if s == Push_Type_ALL {
+		return api.PushReceive_TO_ALL
+	} else if s == Push_Type_USER {
+		return api.PushReceive_TO_USER
+	} else if s == Push_Type_SESSION {
+		return api.PushReceive_TO_SESSION
+	} else if s == Push_Type_CONNECTION {
+		return api.PushReceive_TO_CONNECTION
+	} else {
+		return api.PushReceive_TO_ALL
+	}
+}
+
 type ConfigOption struct {
 	Done       *chan struct{}
 	Logger     *logger.Logger
@@ -140,11 +161,15 @@ var DefaultUdsSocketConfigOption = ConfigOption{
 	EncodeType: Encryption_NONE,
 }
 
+
+
 type GServer struct {
 	Config *ConfigOption
 	//out
 	ChReceiveRequest chan *Payload
 }
+
+
 
 func (p *GServer) Close() {
 

@@ -17,26 +17,7 @@ import (
 )
 
 type HandlerRequest func(request *api.Request, reply *api.Reply) uint32
-type Push_Type uint8
-const (
-	Push_Type_ALL  Push_Type = 0x2
-	Push_Type_USER  Push_Type = 0x4
-	Push_Type_SESSION  Push_Type = 0x8
-	Push_Type_CONNECTION Push_Type = 0x10
-)
-func (s Push_Type) Push_Type_to_proto_type() api.PushReceive_PUSH_TYPE {
-	if s == Push_Type_ALL {
-		return api.PushReceive_TO_ALL
-	} else if s == Push_Type_USER {
-		return api.PushReceive_TO_USER
-	} else if s == Push_Type_SESSION {
-		return api.PushReceive_TO_SESSION
-	} else if s == Push_Type_CONNECTION {
-		return api.PushReceive_TO_CONNECTION
-	} else {
-		return api.PushReceive_TO_ALL
-	}
-}
+
 type Service struct {
 	Done           chan struct{}
 	interrupt      chan os.Signal
@@ -64,7 +45,7 @@ func NewService(SvName string, _log *logger.Logger, config gBase.ConfigOption) *
 
 	return p
 }
-func (p *Service)PushMessage(pType Push_Type,receiver []string,ignore_Type Push_Type,ignore_receiver []string,msg_type uint32,msg *api.Receive) bool{
+func (p *Service) PushMessage(pType gBase.Push_Type,receiver []string,ignore_Type gBase.Push_Type,ignore_receiver string,msg_type uint32,msg *api.Receive) bool{
 	if !p.gw_enable{
 		return false
 	}
