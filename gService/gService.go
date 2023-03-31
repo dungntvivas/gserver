@@ -67,15 +67,7 @@ func NewService(SvName string, _log *logger.Logger, config gBase.ConfigOption) *
 	// config server http grpc ...
 	config.Logger = _log
 	p.grpc_server = gRPC.New(config, p.receiveRequest)
-	var err error
-	if config.GW != nil && len(config.GW) != 0 {
-		p.gw_server, err = gRPC.NewClientConn("gw", "gw.com.vivas.vn",config.GW...)
-		if err != nil {
-			return nil
-		}
-		p.gw_enable = true
-		p.LogInfo("Register gw server ok ")
-	}
+
 	return p
 }
 
@@ -123,6 +115,18 @@ func (p *Service) Start() {
 	/// start server
 	if p.grpc_server != nil {
 		p.grpc_server.Serve()
+	}
+
+	if p.grpc_server.Config.GW != nil && len(p.grpc_server.Config.GW) != 0 {
+		var err error
+		p.gw_server, err = gRPC.NewClientConn("gw", "gw.com.vivas.vn",p.grpc_server.Config.GW...)
+		if err != nil {
+			p.LogError("Start GRPC Client Error %v",err.Error())
+			close(p.Done)
+			return
+		}
+		p.gw_enable = true
+		p.LogInfo("Register gw server ok ")
 	}
 	/// start worker
 	for i := 0; i < runtime.NumCPU()*2; i++ {
