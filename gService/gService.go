@@ -17,17 +17,13 @@ import (
 )
 
 type HandlerRequest func(request *api.Request, reply *api.Reply) uint32
-
-
 type Push_Type uint8
-
 const (
 	Push_Type_ALL  Push_Type = 0x2
 	Push_Type_USER  Push_Type = 0x4
 	Push_Type_SESSION  Push_Type = 0x8
 	Push_Type_CONNECTION Push_Type = 0x10
 )
-
 func (s Push_Type) Push_Type_to_proto_type() api.PushReceive_PUSH_TYPE {
 	if s == Push_Type_ALL {
 		return api.PushReceive_TO_ALL
@@ -41,7 +37,6 @@ func (s Push_Type) Push_Type_to_proto_type() api.PushReceive_PUSH_TYPE {
 		return api.PushReceive_TO_ALL
 	}
 }
-
 type Service struct {
 	Done           chan struct{}
 	interrupt      chan os.Signal
@@ -54,7 +49,6 @@ type Service struct {
 	gw_server      api.APIClient
 	gw_enable 	   bool
 }
-
 func NewService(SvName string, _log *logger.Logger, config gBase.ConfigOption) *Service {
 	p := &Service{
 		Logger:         _log,
@@ -70,12 +64,10 @@ func NewService(SvName string, _log *logger.Logger, config gBase.ConfigOption) *
 
 	return p
 }
-
-func (p *Service)PushMessage(pType Push_Type,receiver []string,msg_type uint32,msg *api.Receive) bool{
+func (p *Service)PushMessage(pType Push_Type,receiver []string,ignore_Type Push_Type,ignore_receiver []string,msg_type uint32,msg *api.Receive) bool{
 	if !p.gw_enable{
 		return false
 	}
-
 	_rq := api.Request{
 		Type: uint32(api.TYPE_INTERNAL_ID_PUSH_RECEIVE),
 		Group: api.Group_INTERNAL,
@@ -84,6 +76,8 @@ func (p *Service)PushMessage(pType Push_Type,receiver []string,msg_type uint32,m
 		PushType: pType.Push_Type_to_proto_type(),
 		Receiver: receiver,
 		ReceiveType: msg_type,
+		Ignore_Type: ignore_Type.Push_Type_to_proto_type(),
+		IgnoreReceiver: ignore_receiver,
 	}
 	var err error
 	_rq_push.Receive, err = anypb.New(msg)
@@ -99,7 +93,6 @@ func (p *Service)PushMessage(pType Push_Type,receiver []string,msg_type uint32,m
 
 	return true
 }
-
 func (p *Service) SetCallBackRequest(cb HandlerRequest) {
 	p.cb = cb
 }
@@ -112,7 +105,6 @@ func (p *Service) LogDebug(format string, args ...interface{}) {
 func (p *Service) LogError(format string, args ...interface{}) {
 	p.Logger.Log(logger.Error, "["+p.SvName+"] "+format, args...)
 }
-
 func (p *Service) Start() {
 	/// start server
 	if p.grpc_server != nil {
@@ -159,7 +151,6 @@ loop:
 func (p *Service) Stop() {
 	close(p.Done)
 }
-
 func (p *Service) worker(id int) {
 loop:
 	for {
@@ -173,7 +164,6 @@ loop:
 		}
 	}
 }
-
 func (p *Service) processRequest(payload *gBase.Payload) {
 
 	reply := &api.Reply{
