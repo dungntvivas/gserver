@@ -18,6 +18,24 @@ const (
 	RequestProtocol_UDS    RequestProtocol = 0x80 // Unix Domain Socket ( linux , macos ) only
 	RequestProtocol_NONE   RequestProtocol = 0x0
 )
+func (s RequestProtocol) String() string {
+	if s == RequestProtocol_HTTP {
+		return "HTTP"
+	} else if s == RequestProtocol_GRPC {
+		return "GRPC"
+	} else if s == RequestProtocol_TCP {
+		return "TCP"
+	} else if s == RequestProtocol_WS {
+		return "WS"
+	}else if s == RequestProtocol_UDP {
+		return "UDP"
+	}else if s == RequestProtocol_UDS {
+		return "UDS"
+	} else {
+		return "Unknown"
+	}
+}
+
 
 type PayloadType uint8
 
@@ -38,7 +56,7 @@ type Payload struct {
 	ChReply chan *api.Reply
 	Request *api.Request
 	//
-	Connection_id int
+	Connection_id string
 }
 type PayloadPush struct {
 

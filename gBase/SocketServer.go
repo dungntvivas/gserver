@@ -5,7 +5,6 @@ import (
 	"crypto/rand"
 	"fmt"
 	"github.com/gobwas/ws/wsutil"
-	"github.com/google/uuid"
 	"net"
 	"runtime"
 	"sync"
@@ -24,10 +23,15 @@ type SocketServer struct {
 	lis          net.Listener
 	Done         chan struct{}
 
-	clients      sync.Map // FD ==> Connection ( 1 connection chứa thông tin kết nối )
-	tokens       sync.Map // token ==> FD ( 1 token có nhiều connection )
-	users 		 sync.Map // user ==> TOKEN ( 1 user có nhiều token )
 	mu           sync.Mutex
+	clients      sync.Map // FD ==> Connection ( 1 connection chứa thông tin kết nối )
+
+	mu_token     sync.Mutex
+	tokens       sync.Map // token ==> FD ( 1 token có nhiều connection )
+
+	mu_user      sync.Mutex
+	users 		 sync.Map // user ==> TOKEN ( 1 user có nhiều token )
+
 	// out
 	chReceiveMsg chan *SocketMessage
     // in
@@ -116,16 +120,26 @@ func (p *SocketServer) SendHelloMsg(newConn *Connection, _c *gnet.Conn) {
 }
 
 func (p *SocketServer) MarkConnectioIsAuthen(token string,user_id string, fd int) {
-	p.mu.Lock()
-	if c, ok := p.clients.Load(fd); ok {
-		(*c.(*gnet.Conn)).Context().(*Connection).Client.IsAuthen = true
-		(*c.(*gnet.Conn)).Context().(*Connection).Client.IsSetupConnection = true
-		(*c.(*gnet.Conn)).Context().(*Connection).Session_id = token
 
+	go func() {
+		// đánh dấu connection id thuộc session nào
+		p.mu.Lock()
+		if c, ok := p.clients.Load(fd); ok {
+			(*c.(*gnet.Conn)).Context().(*Connection).Client.IsAuthen = true
+			(*c.(*gnet.Conn)).Context().(*Connection).Client.IsSetupConnection = true
+			(*c.(*gnet.Conn)).Context().(*Connection).Session_id = token
+		}
+		p.mu.Unlock()
+	}()
 
+	go func() {
+		// đánh dấu session/token có những kết nối nào ( vì 1 session có thể được sử dụng nhiều connection cùng lúc trường hợp mở nhiều tab trên trình duyệt)
+	}()
 
-	}
-	p.mu.Unlock()
+	go func() {
+		// đánh dấu lại user có những session nào đang login ( ví 1 user có thể login trên nhiều thiết bị tạo ra nhiều session đồng thời)
+	}()
+
 }
 
 func (p *SocketServer) OnClose(c gnet.Conn, err error) (action gnet.Action) {
@@ -177,7 +191,7 @@ func (p *SocketServer)onSetupConnection(msg *SocketMessage)  {
 		msg.Conn.Client.EncType = Encryption_Type(hlRequest.EncodeType)
 		p.LogInfo("Client %d Setup encode type %s", msg.Conn.Client.Fd, msg.Conn.Client.EncType.String())
 		msg.Conn.Client.Platfrom = int32(hlRequest.Platform)
-		msg.Conn.Connection_id, _ = uuid.New().MarshalBinary()
+		msg.Conn.Connection_id = []byte(fmt.Sprintf("%d",msg.Fd))
 	}
 	/// BUILD REPLY
 	hlreply := api.Hello_Reply{
@@ -280,7 +294,7 @@ func (p *SocketServer) onReceiveRequest(msg *SocketMessage) {
 	rq.Protocol = uint32(p.Config.Protocol)
 	rq.Session = &api.Session{SessionId: msg.Conn.Session_id}
 	result := make(chan *api.Reply)
-	p.HandlerRequest(&Payload{Request: &rq, ChReply: result, Connection_id: msg.Fd})
+	p.HandlerRequest(&Payload{Request: &rq, ChReply: result, Connection_id: fmt.Sprintf("%s_%d",p.Config.Protocol.String(),msg.Fd)})
 	res := *<-result
 	if res.Status != 0 {
 		res.Msg = api.ResultType(res.Status).String()
