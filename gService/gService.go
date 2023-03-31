@@ -1,6 +1,7 @@
 package gService
 
 import (
+	"google.golang.org/protobuf/types/known/anypb"
 	"os"
 	"os/signal"
 	"runtime"
@@ -16,6 +17,30 @@ import (
 )
 
 type HandlerRequest func(request *api.Request, reply *api.Reply) uint32
+
+
+type Push_Type uint8
+
+const (
+	Push_Type_ALL  Push_Type = 0x2
+	Push_Type_USER  Push_Type = 0x4
+	Push_Type_SESSION  Push_Type = 0x8
+	Push_Type_CONNECTION Push_Type = 0x10
+)
+
+func (s Push_Type) Push_Type_to_proto_type() api.PushReceive_PUSH_TYPE {
+	if s == Push_Type_ALL {
+		return api.PushReceive_TO_ALL
+	} else if s == Push_Type_USER {
+		return api.PushReceive_TO_USER
+	} else if s == Push_Type_SESSION {
+		return api.PushReceive_TO_SESSION
+	} else if s == Push_Type_CONNECTION {
+		return api.PushReceive_TO_CONNECTION
+	} else {
+		return api.PushReceive_TO_ALL
+	}
+}
 
 type Service struct {
 	Done           chan struct{}
@@ -49,17 +74,36 @@ func NewService(SvName string, _log *logger.Logger, config gBase.ConfigOption) *
 			return nil
 		}
 		p.gw_enable = true
+		p.LogInfo("Register gw server ok ")
 	}
 	return p
 }
 
-func (p *Service)PushMessage(msg api.Receive){
+func (p *Service)PushMessage(pType Push_Type,receiver []string,msg_type uint32,msg *api.Receive) bool{
 	if !p.gw_enable{
-		return
+		return false
 	}
 
-	//gRPC.MakeRpcRequest(p.gw_server,)
+	_rq := api.Request{}
+	_rq_push := api.PushReceive_Request{
+		PushType: pType.Push_Type_to_proto_type(),
+		Receiver: receiver,
+		ReceiveType: msg_type,
+	}
+	_receive, err := anypb.New(msg)
+	if err != nil{
+		p.LogError("Send Push Error %v",err.Error())
+		return false
+	}
+	_rq_push.Receive = _receive
 
+	_, err = gRPC.MakeRpcRequest(p.gw_server, &_rq)
+	if err != nil {
+		p.LogError("Send Push Error %v",err.Error())
+		return false
+	}
+
+	return true
 }
 
 func (p *Service) SetCallBackRequest(cb HandlerRequest) {
