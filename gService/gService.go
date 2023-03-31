@@ -76,19 +76,21 @@ func (p *Service)PushMessage(pType Push_Type,receiver []string,msg_type uint32,m
 		return false
 	}
 
-	_rq := api.Request{}
+	_rq := api.Request{
+		Type: uint32(api.TYPE_INTERNAL_ID_PUSH_RECEIVE),
+		Group: api.Group_INTERNAL,
+	}
 	_rq_push := api.PushReceive_Request{
 		PushType: pType.Push_Type_to_proto_type(),
 		Receiver: receiver,
 		ReceiveType: msg_type,
 	}
-	_receive, err := anypb.New(msg)
+	var err error
+	_rq_push.Receive, err = anypb.New(msg)
 	if err != nil{
 		p.LogError("Send Push Error %v",err.Error())
 		return false
 	}
-	_rq_push.Receive = _receive
-
 	_, err = gRPC.MakeRpcRequest(p.gw_server, &_rq)
 	if err != nil {
 		p.LogError("Send Push Error %v",err.Error())
