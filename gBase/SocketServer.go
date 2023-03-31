@@ -89,7 +89,7 @@ func (p *SocketServer) OnOpen(c gnet.Conn) (out []byte, action gnet.Action) {
 	newConn.Session_id = ""
 	c.SetContext(newConn)
 	p.mu.Lock()
-	p.clients.Store(c.Fd(), &c)
+	p.clients.Store(fmt.Sprintf("%s_%d",p.Config.Protocol.String(),c.Fd()), &c)
 	p.mu.Unlock()
 	if p.Config.Protocol != RequestProtocol_WS {
 		go p.SendHelloMsg(newConn, &c)
@@ -97,29 +97,14 @@ func (p *SocketServer) OnOpen(c gnet.Conn) (out []byte, action gnet.Action) {
 
 	return
 }
-
-func (p *SocketServer) SendHelloMsg(newConn *Connection, _c *gnet.Conn) {
-	/// build hello
-	bytes := make([]byte, 5) //generate a random 32 byte key for AES-256
-	rand.Read(bytes)
-	helloReceive := api.HelloReceive{
-		ServerTime:       uint64(time.Now().Unix()),
-		PKey:             newConn.Server.PKey,
-		ServerEncodeType: api.EncodeType(newConn.Server.DecType),
-	}
-	receive := api.Receive{
-		Type:       uint32(api.TYPE_ID_RECEIVE_HELLO),
-		ServerTime: helloReceive.ServerTime,
-	}
-	_receiveAny, _ := anypb.New(&helloReceive)
-	receive.Receive = _receiveAny
-	_receive_bin, _ := proto.Marshal(&receive)
-	msg := NewMessage(_receive_bin, 0, receive.Type, bytes)
-	out, _ := msg.Encode(Encryption_NONE, nil)
-	(*_c).AsyncWrite(out, nil)
+func (p *SocketServer) OnClose(c gnet.Conn, err error) (action gnet.Action) {
+	p.LogInfo("conn [%v] Close", c.Fd())
+	p.mu.Lock()
+	p.clients.Delete(fmt.Sprintf("%s_%d",p.Config.Protocol.String(),c.Fd()))
+	p.mu.Unlock()
+	return gnet.Close
 }
-
-func (p *SocketServer) MarkConnectioIsAuthen(token string,user_id string, fd int) {
+func (p *SocketServer) MarkConnectioIsAuthen(token string,user_id string, fd string) {
 
 	go func() {
 		// đánh dấu connection id thuộc session nào
@@ -141,15 +126,26 @@ func (p *SocketServer) MarkConnectioIsAuthen(token string,user_id string, fd int
 	}()
 
 }
-
-func (p *SocketServer) OnClose(c gnet.Conn, err error) (action gnet.Action) {
-	p.LogInfo("conn [%v] Close", c.Fd())
-	p.mu.Lock()
-	p.clients.Delete(c.Fd())
-	p.mu.Unlock()
-	return gnet.Close
+func (p *SocketServer) SendHelloMsg(newConn *Connection, _c *gnet.Conn) {
+	/// build hello
+	bytes := make([]byte, 5) //generate a random 32 byte key for AES-256
+	rand.Read(bytes)
+	helloReceive := api.HelloReceive{
+		ServerTime:       uint64(time.Now().Unix()),
+		PKey:             newConn.Server.PKey,
+		ServerEncodeType: api.EncodeType(newConn.Server.DecType),
+	}
+	receive := api.Receive{
+		Type:       uint32(api.TYPE_ID_RECEIVE_HELLO),
+		ServerTime: helloReceive.ServerTime,
+	}
+	_receiveAny, _ := anypb.New(&helloReceive)
+	receive.Receive = _receiveAny
+	_receive_bin, _ := proto.Marshal(&receive)
+	msg := NewMessage(_receive_bin, 0, receive.Type, bytes)
+	out, _ := msg.Encode(Encryption_NONE, nil)
+	(*_c).AsyncWrite(out, nil)
 }
-
 func (p *SocketServer) OnTraffic(c gnet.Conn) gnet.Action {
 	if p.Config.Protocol == RequestProtocol_WS {
 		msgs, action := WebsocketDecodePackage(p.Config.Logger,c)
@@ -177,7 +173,71 @@ loop:
 		}
 	}
 }
+func (p *SocketServer) onReceiveRequest(msg *SocketMessage) {
 
+	if msg.MsgType == uint32(api.TYPE_ID_REQUEST_HELLO) && msg.MsgGroup == uint32(api.Group_CONNECTION){
+		p.onSetupConnection(msg)
+		return
+	}
+	if (msg.MSG_encode_decode_type != msg.Conn.Server.DecType || !msg.Conn.Client.IsSetupConnection) && msg.TypePayload == PayloadType_BIN {
+		p.LogError("Connection Decode Invalid [server %v - payload %v]",msg.Conn.Server.DecType,msg.MSG_encode_decode_type)
+		return
+	}
+
+	if msg.MsgType == uint32(api.TYPE_ID_REQUEST_KEEPALIVE) && msg.MsgGroup == uint32(api.Group_CONNECTION){
+		p.onClientKeepAlive(msg)
+		return
+	}
+	if msg.MsgGroup != uint32(api.Group_AUTHEN){
+		// check authen
+		if !msg.Conn.isOK() {
+			p.LogError("Connection %d - isAuthen %v -- group %v -- type %v",msg.Fd,msg.Conn.Client.IsAuthen,msg.MsgGroup,msg.MsgType)
+			if _buf, err := GetReplyBuffer(uint32(api.ResultType_REQUEST_INVALID), msg.MsgType, msg.MsgGroup, msg.MSG_ID, nil, Encryption_NONE, nil); err == nil {
+				if c, o := p.clients.Load(fmt.Sprintf("%s_%d",p.Config.Protocol.String(),msg.Fd)); o {
+					if p.Config.Protocol == RequestProtocol_WS {
+						if(msg.TypePayload == PayloadType_JSON){
+							wsutil.WriteServerMessage((*c.(*gnet.Conn)), ws.OpText, []byte(fmt.Sprintf("{\"status\":%d, \"msg\":\"%s\"}", uint32(api.ResultType_REQUEST_INVALID), "REQUEST_INVALID")))
+						}else{
+							wsutil.WriteServerMessage((*c.(*gnet.Conn)), ws.OpBinary, _buf)
+						}
+
+					}else{
+						(*c.(*gnet.Conn)).AsyncWrite(_buf, nil)
+					}
+				}
+			}
+
+			return
+		}
+	}
+	rq := api.Request{}
+	rq.Type = msg.MsgType
+	rq.Group = api.Group(msg.MsgGroup)
+	rq.BinRequest = msg.Payload
+	rq.PayloadType = uint32(msg.TypePayload)
+	rq.Protocol = uint32(p.Config.Protocol)
+	rq.Session = &api.Session{SessionId: msg.Conn.Session_id}
+	result := make(chan *api.Reply)
+	p.HandlerRequest(&Payload{Request: &rq, ChReply: result, Connection_id: fmt.Sprintf("%s_%d",p.Config.Protocol.String(),msg.Fd)})
+	res := *<-result
+	if res.Status != 0 {
+		res.Msg = api.ResultType(res.Status).String()
+	}
+
+	if _buf, err := GetReplyBuffer(res.Status , msg.MsgType, msg.MsgGroup, msg.MSG_ID, &res, msg.Conn.Client.EncType, msg.Conn.Client.PKey); err == nil {
+		if c, o := p.clients.Load(fmt.Sprintf("%s_%d",p.Config.Protocol.String(),msg.Fd)); o {
+			if p.Config.Protocol == RequestProtocol_WS {
+				if(msg.TypePayload == PayloadType_JSON){
+					wsutil.WriteServerMessage((*c.(*gnet.Conn)), ws.OpText, res.BinReply)
+				}else{
+					wsutil.WriteServerMessage((*c.(*gnet.Conn)), ws.OpBinary, _buf)
+				}
+			}else{
+				(*c.(*gnet.Conn)).AsyncWrite(_buf, nil)
+			}
+		}
+	}
+}
 func (p *SocketServer)onSetupConnection(msg *SocketMessage)  {
 	hlRequest := api.Hello_Request{}
 	status := uint32(api.ResultType_OK)
@@ -204,7 +264,7 @@ func (p *SocketServer)onSetupConnection(msg *SocketMessage)  {
 	if err != nil {
 		p.LogError("Error %v", err.Error())
 	}
-	if c, o := p.clients.Load(msg.Fd); o{
+	if c, o := p.clients.Load(fmt.Sprintf("%s_%d",p.Config.Protocol.String(),msg.Fd)); o{
 		if p.Config.Protocol == RequestProtocol_WS {
 			wsutil.WriteServerMessage((*c.(*gnet.Conn)), ws.OpBinary, _buf)
 		}else{
@@ -237,7 +297,7 @@ func (p *SocketServer)onClientKeepAlive(msg *SocketMessage){
 		p.LogError("Error %v", err.Error())
 		return
 	}
-	if c, o := p.clients.Load(msg.Fd); o {
+	if c, o := p.clients.Load(fmt.Sprintf("%s_%d",p.Config.Protocol.String(),msg.Fd)); o {
 		if p.Config.Protocol == RequestProtocol_WS {
 			wsutil.WriteServerMessage((*c.(*gnet.Conn)), ws.OpBinary, _buf)
 		}else{
@@ -245,76 +305,6 @@ func (p *SocketServer)onClientKeepAlive(msg *SocketMessage){
 		}
 	}
 }
-
-
-
-
-func (p *SocketServer) onReceiveRequest(msg *SocketMessage) {
-
-	if msg.MsgType == uint32(api.TYPE_ID_REQUEST_HELLO) && msg.MsgGroup == uint32(api.Group_CONNECTION){
-		p.onSetupConnection(msg)
-		return
-	}
-	if (msg.MSG_encode_decode_type != msg.Conn.Server.DecType || !msg.Conn.Client.IsSetupConnection) && msg.TypePayload == PayloadType_BIN {
-		p.LogError("Connection Decode Invalid [server %v - payload %v]",msg.Conn.Server.DecType,msg.MSG_encode_decode_type)
-		return
-	}
-
-	if msg.MsgType == uint32(api.TYPE_ID_REQUEST_KEEPALIVE) && msg.MsgGroup == uint32(api.Group_CONNECTION){
-		p.onClientKeepAlive(msg)
-		return
-	}
-	if msg.MsgGroup != uint32(api.Group_AUTHEN){
-		// check authen
-		if !msg.Conn.isOK() {
-			p.LogError("Connection %d - isAuthen %v -- group %v -- type %v",msg.Fd,msg.Conn.Client.IsAuthen,msg.MsgGroup,msg.MsgType)
-			if _buf, err := GetReplyBuffer(uint32(api.ResultType_REQUEST_INVALID), msg.MsgType, msg.MsgGroup, msg.MSG_ID, nil, Encryption_NONE, nil); err == nil {
-				if c, o := p.clients.Load(msg.Fd); o {
-					if p.Config.Protocol == RequestProtocol_WS {
-						if(msg.TypePayload == PayloadType_JSON){
-							wsutil.WriteServerMessage((*c.(*gnet.Conn)), ws.OpText, []byte(fmt.Sprintf("{\"status\":%d, \"msg\":\"%s\"}", uint32(api.ResultType_REQUEST_INVALID), "REQUEST_INVALID")))
-						}else{
-							wsutil.WriteServerMessage((*c.(*gnet.Conn)), ws.OpBinary, _buf)
-						}
-
-					}else{
-						(*c.(*gnet.Conn)).AsyncWrite(_buf, nil)
-					}
-				}
-			}
-
-			return
-		}
-	}
-	rq := api.Request{}
-	rq.Type = msg.MsgType
-	rq.Group = api.Group(msg.MsgGroup)
-	rq.BinRequest = msg.Payload
-	rq.PayloadType = uint32(msg.TypePayload)
-	rq.Protocol = uint32(p.Config.Protocol)
-	rq.Session = &api.Session{SessionId: msg.Conn.Session_id}
-	result := make(chan *api.Reply)
-	p.HandlerRequest(&Payload{Request: &rq, ChReply: result, Connection_id: fmt.Sprintf("%s_%d",p.Config.Protocol.String(),msg.Fd)})
-	res := *<-result
-	if res.Status != 0 {
-		res.Msg = api.ResultType(res.Status).String()
-	}
-
-	if _buf, err := GetReplyBuffer(res.Status , msg.MsgType, msg.MsgGroup, msg.MSG_ID, &res, msg.Conn.Client.EncType, msg.Conn.Client.PKey); err == nil {
-		if c, o := p.clients.Load(msg.Fd); o {
-			if p.Config.Protocol == RequestProtocol_WS {
-				if(msg.TypePayload == PayloadType_JSON){
-					wsutil.WriteServerMessage((*c.(*gnet.Conn)), ws.OpText, res.BinReply)
-				}else{
-					wsutil.WriteServerMessage((*c.(*gnet.Conn)), ws.OpBinary, _buf)
-				}
-			}else{
-				(*c.(*gnet.Conn)).AsyncWrite(_buf, nil)
-			}
-		}
-	}
-}
-
 func (p *SocketServer) Close() {
 	p.LogInfo("Close")
 	close(p.Done)
