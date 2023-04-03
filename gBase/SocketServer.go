@@ -256,12 +256,15 @@ func (p *SocketServer) onReceiveRequest(msg *SocketMessage) {
 }
 func (p *SocketServer) PushMessage(pType Push_Type,receiver []string,ignore_Type Push_Type,ignore_receiver string,msg_type uint32,msg []byte){
 	if pType == Push_Type_ALL {
+		p.LogInfo("PUSH ALL USER")
 		/// push all user
 		p.users.Range(func(key, value any) bool {
 			if ignore_Type == Push_Type_USER {
 				/// check bỏ qua ko push
 				if key.(string) != ignore_receiver {
 					p.pushToUser(key.(string),ignore_Type,ignore_receiver,msg_type,msg)
+				}else{
+					p.LogInfo("ignore_receiver %v",ignore_receiver)
 				}
 			}else{
 				p.pushToUser(key.(string),ignore_Type,ignore_receiver,msg_type,msg)
@@ -270,16 +273,19 @@ func (p *SocketServer) PushMessage(pType Push_Type,receiver []string,ignore_Type
 		})
 	}else if pType == Push_Type_USER{
 		/// push to user
+		p.LogInfo("PUSH TO USER")
 		for _, s := range receiver {
 			p.pushToUser(s,ignore_Type,ignore_receiver,msg_type,msg)
 		}
 	}else if pType == Push_Type_SESSION {
 		/// push to session
+		p.LogInfo("PUSH TO SESSION")
 		for _, s := range receiver {
 			p.pushToSession(s,ignore_Type,ignore_receiver,msg_type,msg)
 		}
 	}else {
 		/// push to connection
+		p.LogInfo("PUSH TO CONNECTION")
 		for _, s := range receiver {
 			p.pushToConnection(s,msg_type,msg)
 		}
@@ -288,7 +294,7 @@ func (p *SocketServer) PushMessage(pType Push_Type,receiver []string,ignore_Type
 }
 func (p *SocketServer) pushToUser(user_id string,ignore_Type Push_Type,ignore_receiver string,msg_type uint32,msg []byte){
 	/// Lấy danh sách session của 1 user
-
+	p.LogInfo("pushToUser")
 	sessions,_ := p.users.Load(user_id)
 	for _, s := range sessions.([]string) {
 		if ignore_Type == Push_Type_SESSION {
@@ -302,6 +308,7 @@ func (p *SocketServer) pushToUser(user_id string,ignore_Type Push_Type,ignore_re
 }
 func (p *SocketServer) pushToSession(session_id string,ignore_Type Push_Type,ignore_receiver string,msg_type uint32,msg []byte){
 	/// Lấy danh sách connection của 1 session
+	p.LogInfo("pushToSession")
 	connections,_ := p.sessions.Load(session_id)
 	for _, s := range connections.([]string) {
 		if ignore_Type == Push_Type_CONNECTION {
@@ -315,6 +322,7 @@ func (p *SocketServer) pushToSession(session_id string,ignore_Type Push_Type,ign
 }
 func (p *SocketServer) pushToConnection(connection_id string,msg_type uint32,msg []byte){
 	/// lấy kết nối qua fd(connection_id) và thực hiện đóng gói đẩy msg
+	p.LogInfo("pushToConnection")
 	p.mu.Lock()
 	if c, ok := p.clients.Load(connection_id); ok {
 		p.mu.Unlock()
