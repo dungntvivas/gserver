@@ -254,75 +254,75 @@ func (p *SocketServer) onReceiveRequest(msg *SocketMessage) {
 		}
 	}
 }
-func (p *SocketServer) PushMessage(pType Push_Type,receiver []string,ignore_Type Push_Type,ignore_receiver string,msg_type uint32,msg []byte){
-	if pType == Push_Type_ALL {
+func (p *SocketServer) PushMessage(rqPush api.PushReceive_Request){
+	if rqPush.PushType == api.PushReceive_TO_ALL {
 		p.LogInfo("PUSH ALL USER")
 		/// push all user
 		p.users.Range(func(key, value any) bool {
-			if ignore_Type == Push_Type_USER {
+			if rqPush.Ignore_Type == api.PushReceive_TO_USER {
 				/// check bỏ qua ko push
-				if key.(string) != ignore_receiver {
-					p.pushToUser(key.(string),ignore_Type,ignore_receiver,msg_type,msg)
+				if key.(string) != rqPush.IgnoreReceiver {
+					p.pushToUser(key.(string),&rqPush)
 				}else{
-					p.LogInfo("ignore_receiver %v",ignore_receiver)
+					p.LogInfo("ignore_receiver %v",rqPush.IgnoreReceiver)
 				}
 			}else{
-				p.pushToUser(key.(string),ignore_Type,ignore_receiver,msg_type,msg)
+				p.pushToUser(key.(string),&rqPush)
 			}
 			return true
 		})
-	}else if pType == Push_Type_USER{
+	}else if rqPush.PushType == api.PushReceive_TO_USER{
 		/// push to user
 		p.LogInfo("PUSH TO USER")
-		for _, s := range receiver {
-			p.pushToUser(s,ignore_Type,ignore_receiver,msg_type,msg)
+		for _, s := range rqPush.Receiver {
+			p.pushToUser(s,&rqPush)
 		}
-	}else if pType == Push_Type_SESSION {
+	}else if rqPush.PushType == api.PushReceive_TO_SESSION {
 		/// push to session
 		p.LogInfo("PUSH TO SESSION")
-		for _, s := range receiver {
-			p.pushToSession(s,ignore_Type,ignore_receiver,msg_type,msg)
+		for _, s := range rqPush.Receiver {
+			p.pushToSession(s,&rqPush)
 		}
 	}else {
 		/// push to connection
 		p.LogInfo("PUSH TO CONNECTION")
-		for _, s := range receiver {
-			p.pushToConnection(s,msg_type,msg)
+		for _, s := range rqPush.Receiver {
+			p.pushToConnection(s,&rqPush)
 		}
 	}
 	//MARK PUSH TO OTHER GATEWAY
 }
-func (p *SocketServer) pushToUser(user_id string,ignore_Type Push_Type,ignore_receiver string,msg_type uint32,msg []byte){
+func (p *SocketServer) pushToUser(user_id string,rqPush *api.PushReceive_Request){
 	/// Lấy danh sách session của 1 user
 	p.LogInfo("pushToUser")
 	sessions,_ := p.users.Load(user_id)
 	for _, s := range sessions.([]string) {
-		if ignore_Type == Push_Type_SESSION {
-			if s != ignore_receiver {
-				p.pushToSession(s,ignore_Type,ignore_receiver,msg_type,msg)
+		if rqPush.Ignore_Type == api.PushReceive_TO_SESSION {
+			if s != rqPush.IgnoreReceiver {
+				p.pushToSession(s,rqPush)
 			}
 		}else{
-			p.pushToSession(s,ignore_Type,ignore_receiver,msg_type,msg)
+			p.pushToSession(s,rqPush)
 		}
 	}
 }
-func (p *SocketServer) pushToSession(session_id string,ignore_Type Push_Type,ignore_receiver string,msg_type uint32,msg []byte){
+func (p *SocketServer) pushToSession(session_id string,rqPush *api.PushReceive_Request){
 	/// Lấy danh sách connection của 1 session
 	p.LogInfo("pushToSession")
 	connections,_ := p.sessions.Load(session_id)
 	for _, s := range connections.([]string) {
-		if ignore_Type == Push_Type_CONNECTION {
-			if s != ignore_receiver {
-				p.pushToConnection(s,msg_type,msg)
+		if rqPush.Ignore_Type == api.PushReceive_TO_CONNECTION {
+			if s != rqPush.IgnoreReceiver {
+				p.pushToConnection(s,rqPush)
 			}else{
 				p.LogInfo("ignore connection %v",s)
 			}
 		}else{
-			p.pushToConnection(s,msg_type,msg)
+			p.pushToConnection(s,rqPush)
 		}
 	}
 }
-func (p *SocketServer) pushToConnection(connection_id string,msg_type uint32,msg []byte){
+func (p *SocketServer) pushToConnection(connection_id string,rqPush *api.PushReceive_Request){
 	/// lấy kết nối qua fd(connection_id) và thực hiện đóng gói đẩy msg
 	p.LogInfo("pushToConnection")
 	p.mu.Lock()
@@ -330,12 +330,18 @@ func (p *SocketServer) pushToConnection(connection_id string,msg_type uint32,msg
 		p.mu.Unlock()
 		connection := (*c.(*gnet.Conn)).Context().(*Connection)
 		if connection.Client.IsAuthen {
-			p.LogInfo("PUSH TO CONNECTION")
-			//if p.Config.Protocol == RequestProtocol_WS {
-			//
-			//}else{
-			//
-			//}
+			p.LogInfo("PUSH TO CONNECTION , Connection payload Type %v",connection.Client.payloadType)
+			if p.Config.Protocol == RequestProtocol_WS {
+				if(connection.Client.payloadType == PayloadType_JSON){
+					wsutil.WriteServerMessage((*c.(*gnet.Conn)), ws.OpText, rqPush.ReceiveJson)
+				}else{
+					wsutil.WriteServerMessage((*c.(*gnet.Conn)), ws.OpBinary, rqPush.Receive)
+				}
+				// với websocket có thể nhận json hoặc bin
+			}else{
+				// với những socket còn lại thì chỉ nhận bin request
+				(*c.(*gnet.Conn)).AsyncWrite(rqPush.Receive, nil)
+			}
 		}
 	}else{
 		p.mu.Unlock()

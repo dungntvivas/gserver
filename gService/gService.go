@@ -66,6 +66,11 @@ func (p *Service) PushMessage(pType gBase.Push_Type,receiver []string,ignore_Typ
 		p.LogError("Send Push Error %v",err.Error())
 		return false
 	}
+	_rq_push.ReceiveJson, err = protojson.Marshal(msg)
+	if err != nil{
+		p.LogError("Send Push Error %v",err.Error())
+		return false
+	}
 	_rq.Request ,err = anypb.New(&_rq_push)
 	if err != nil{
 		p.LogError("Send Push Error %v",err.Error())
