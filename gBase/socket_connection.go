@@ -31,6 +31,7 @@ type ClientConnection struct {
 
 	Fd       int  // id của kết nối đối với os ( udp không xác định được fd) == connection ID
 	IsAuthen bool // kết nối này đã được xác thực hay chưa
+	payloadType PayloadType
 }
 func (p *ClientConnection)isOK() bool{
 	return p.IsAuthen && p.IsSetupConnection

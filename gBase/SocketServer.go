@@ -101,7 +101,7 @@ func (p *SocketServer) OnClose(c gnet.Conn, err error) (action gnet.Action) {
 	p.mu.Unlock()
 	return gnet.Close
 }
-func (p *SocketServer) MarkConnectioIsAuthen(token string,user_id string, fd string) {
+func (p *SocketServer) MarkConnectioIsAuthen(token string,user_id string, fd string,payload_type PayloadType) {
 
 	go func() {
 		// đánh dấu connection id thuộc session nào
@@ -109,6 +109,7 @@ func (p *SocketServer) MarkConnectioIsAuthen(token string,user_id string, fd str
 		if c, ok := p.clients.Load(fd); ok {
 			(*c.(*gnet.Conn)).Context().(*Connection).Client.IsAuthen = true
 			(*c.(*gnet.Conn)).Context().(*Connection).Client.IsSetupConnection = true
+			(*c.(*gnet.Conn)).Context().(*Connection).Client.payloadType = payload_type
 			(*c.(*gnet.Conn)).Context().(*Connection).Session_id = token
 		}
 		p.mu.Unlock()
@@ -116,10 +117,28 @@ func (p *SocketServer) MarkConnectioIsAuthen(token string,user_id string, fd str
 
 	go func() {
 		// đánh dấu session/token có những kết nối nào ( vì 1 session có thể được sử dụng nhiều connection cùng lúc trường hợp mở nhiều tab trên trình duyệt)
+		p.mu_token.Lock()
+		if _s, ok := p.sessions.Load(token); ok {
+			cur_slice := _s.([]string)
+			cur_slice = append(cur_slice,fd)
+			p.sessions.Store(token,cur_slice)
+		} else {
+			p.sessions.Store(token,[]string{fd})
+		}
+		p.mu_token.Unlock()
 	}()
 
 	go func() {
 		// đánh dấu lại user có những session nào đang login ( ví 1 user có thể login trên nhiều thiết bị tạo ra nhiều session đồng thời)
+		p.mu_user.Lock()
+		if _s, ok := p.users.Load(user_id); ok {
+			cur_slice := _s.([]string)
+			cur_slice = append(cur_slice,token)
+			p.users.Store(user_id,cur_slice)
+		} else {
+			p.users.Store(user_id,[]string{token})
+		}
+		p.mu_user.Unlock()
 	}()
 
 }
@@ -301,7 +320,12 @@ func (p *SocketServer) pushToConnection(connection_id string,msg_type uint32,msg
 		p.mu.Unlock()
 		connection := (*c.(*gnet.Conn)).Context().(*Connection)
 		if connection.Client.IsAuthen {
-
+			p.LogInfo("PUSH TO CONNECTION")
+			//if p.Config.Protocol == RequestProtocol_WS {
+			//
+			//}else{
+			//
+			//}
 		}
 	}else{
 		p.mu.Unlock()
