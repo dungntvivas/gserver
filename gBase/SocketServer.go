@@ -96,8 +96,36 @@ func (p *SocketServer) OnOpen(c gnet.Conn) (out []byte, action gnet.Action) {
 func (p *SocketServer) OnClose(c gnet.Conn, err error) (action gnet.Action) {
 	p.LogInfo("conn [%v] Close", c.Fd())
 	p.mu.Lock()
-	p.clients.Delete(fmt.Sprintf("%s_%d",p.Config.Protocol.String(),c.Fd()))
+	if conn, ok := p.clients.Load(fmt.Sprintf("%s_%d",p.Config.Protocol.String(),c.Fd())); ok {
+		/// remove fd has connection
+		if (*conn.(*gnet.Conn)).Context().(*Connection).Client.IsAuthen {
+			var sid = (*conn.(*gnet.Conn)).Context().(*Connection).Session_id
+			var uid = (*conn.(*gnet.Conn)).Context().(*Connection).User_id
+
+			go func() {
+				/// remove session has connection
+				p.mu_token.Lock()
+				p.sessions.Delete(sid)
+				p.mu_token.Unlock()
+			}()
+			go func() {
+				/// remove user has session
+				p.mu_user.Lock()
+				p.users.Delete(uid)
+				p.mu_user.Unlock()
+			}()
+		}
+
+
+
+		//(*c.(*gnet.Conn)).Context().(*Connection).User_id
+		p.clients.Delete(fmt.Sprintf("%s_%d",p.Config.Protocol.String(),c.Fd()))
+	}
 	p.mu.Unlock()
+
+
+
+
 	return gnet.Close
 }
 func (p *SocketServer) MarkConnectioIsAuthen(token string,user_id string, fd string,payload_type PayloadType) {
@@ -110,6 +138,7 @@ func (p *SocketServer) MarkConnectioIsAuthen(token string,user_id string, fd str
 			(*c.(*gnet.Conn)).Context().(*Connection).Client.IsSetupConnection = true
 			(*c.(*gnet.Conn)).Context().(*Connection).Client.payloadType = payload_type
 			(*c.(*gnet.Conn)).Context().(*Connection).Session_id = token
+			(*c.(*gnet.Conn)).Context().(*Connection).User_id = user_id
 		}
 		p.mu.Unlock()
 	}()
@@ -331,7 +360,7 @@ func (p *SocketServer) pushToConnection(connection_id string,rqPush *api.PushRec
 		if connection.Client.IsAuthen {
 			p.LogInfo("PUSH TO CONNECTION , Connection payload Type %v",connection.Client.payloadType)
 			if p.Config.Protocol == RequestProtocol_WS {
-				if(connection.Client.payloadType != PayloadType_JSON){
+				if(connection.Client.payloadType == PayloadType_JSON){
 					wsutil.WriteServerMessage((*c.(*gnet.Conn)), ws.OpText, rqPush.ReceiveJson)
 				}else{
 					/// CONVERT TO SOCKET PAYLOAD ////
