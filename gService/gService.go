@@ -59,6 +59,8 @@ func (p *Service) PushMessage(pType gBase.Push_Type,receiver []string,ignore_Typ
 		ReceiveType: msg_type,
 		Ignore_Type: ignore_Type.Push_Type_to_proto_type(),
 		IgnoreReceiver: ignore_receiver,
+		RcType: msg.Type,
+		RcGroup: uint32(msg.Group),
 	}
 	var err error
 	_rq_push.Receive, err = gBase.MsgToByte(msg)

@@ -55,6 +55,21 @@ func MsgToByte(src proto.Message) ([]byte, error){
 	return proto.Marshal(src)
 }
 
+func GetReceiveBuffer(msgType uint32,msgGroup uint32,encodeType Encryption_Type,pKey []byte,receive []byte) ([]byte,error){
+	_msg := SocketMessage{
+		Payload: receive,
+		MsgType: msgType,
+		MsgGroup: msgGroup,
+		MSG_ID: []byte{0x86,0x73,0x86,0x65,0x83},
+	}
+	/// MSG SOCKET ENCODE
+	_buf, err := _msg.Encode(encodeType, pKey)
+	if err != nil {
+		return  nil,err
+	}
+	// RETURN
+	return _buf,nil
+}
 
 func GetReplyBuffer(status uint32,msgType uint32,msgGroup uint32,msgID []byte,src proto.Message,encodeType Encryption_Type,pKey []byte) ([]byte,error){
 	reply := NewReply(status)
@@ -82,4 +97,5 @@ func GetReplyBuffer(status uint32,msgType uint32,msgGroup uint32,msgID []byte,sr
 	// RETURN
 	return _buf,nil
 }
+
 

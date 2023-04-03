@@ -2,7 +2,6 @@ package gBase
 
 import (
 	"bytes"
-	"crypto/rand"
 	"fmt"
 	"github.com/gobwas/ws"
 	"github.com/gobwas/ws/wsutil"
@@ -146,8 +145,6 @@ func (p *SocketServer) MarkConnectioIsAuthen(token string,user_id string, fd str
 }
 func (p *SocketServer) SendHelloMsg(newConn *Connection, _c *gnet.Conn) {
 	/// build hello
-	bytes := make([]byte, 5) //generate a random 32 byte key for AES-256
-	rand.Read(bytes)
 	helloReceive := api.HelloReceive{
 		ServerTime:       uint64(time.Now().Unix()),
 		PKey:             newConn.Server.PKey,
@@ -160,7 +157,7 @@ func (p *SocketServer) SendHelloMsg(newConn *Connection, _c *gnet.Conn) {
 	_receiveAny, _ := anypb.New(&helloReceive)
 	receive.Receive = _receiveAny
 	_receive_bin, _ := proto.Marshal(&receive)
-	msg := NewMessage(_receive_bin, 0, receive.Type, bytes)
+	msg := NewMessage(_receive_bin, 0, receive.Type, []byte{0x86,0x73,0x86,0x65,0x83})
 	out, _ := msg.Encode(Encryption_NONE, nil)
 	(*_c).AsyncWrite(out, nil)
 }
@@ -334,15 +331,20 @@ func (p *SocketServer) pushToConnection(connection_id string,rqPush *api.PushRec
 		if connection.Client.IsAuthen {
 			p.LogInfo("PUSH TO CONNECTION , Connection payload Type %v",connection.Client.payloadType)
 			if p.Config.Protocol == RequestProtocol_WS {
-				if(connection.Client.payloadType == PayloadType_JSON){
+				if(connection.Client.payloadType != PayloadType_JSON){
 					wsutil.WriteServerMessage((*c.(*gnet.Conn)), ws.OpText, rqPush.ReceiveJson)
 				}else{
-					wsutil.WriteServerMessage((*c.(*gnet.Conn)), ws.OpBinary, rqPush.Receive)
+					/// CONVERT TO SOCKET PAYLOAD ////
+					if _buf, err := GetReceiveBuffer(rqPush.RcType,rqPush.RcGroup,connection.Client.EncType,connection.Client.PKey,rqPush.Receive); err == nil {
+						wsutil.WriteServerMessage((*c.(*gnet.Conn)), ws.OpBinary, _buf)
+					}
 				}
 				// với websocket có thể nhận json hoặc bin
 			}else{
 				// với những socket còn lại thì chỉ nhận bin request
-				(*c.(*gnet.Conn)).AsyncWrite(rqPush.Receive, nil)
+				if _buf, err := GetReceiveBuffer(rqPush.RcType,rqPush.RcGroup,connection.Client.EncType,connection.Client.PKey,rqPush.Receive); err == nil {
+					(*c.(*gnet.Conn)).AsyncWrite(_buf, nil)
+				}
 			}
 		}
 	}else{
