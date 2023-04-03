@@ -88,10 +88,10 @@ func (s Encryption_Type) String() string {
 
 type Push_Type uint8
 const (
-	Push_Type_ALL  Push_Type = 0x2
-	Push_Type_USER  Push_Type = 0x4
-	Push_Type_SESSION  Push_Type = 0x8
-	Push_Type_CONNECTION Push_Type = 0x10
+	Push_Type_ALL  Push_Type = 0
+	Push_Type_USER  Push_Type = 1
+	Push_Type_SESSION  Push_Type = 2
+	Push_Type_CONNECTION Push_Type = 3
 )
 func (s Push_Type) Push_Type_to_proto_type() api.PushReceive_PUSH_TYPE {
 	if s == Push_Type_ALL {
