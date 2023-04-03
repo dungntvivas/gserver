@@ -314,6 +314,8 @@ func (p *SocketServer) pushToSession(session_id string,ignore_Type Push_Type,ign
 		if ignore_Type == Push_Type_CONNECTION {
 			if s != ignore_receiver {
 				p.pushToConnection(s,msg_type,msg)
+			}else{
+				p.LogInfo("ignore connection %v",s)
 			}
 		}else{
 			p.pushToConnection(s,msg_type,msg)
