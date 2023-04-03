@@ -61,7 +61,7 @@ func (p *Service) PushMessage(pType gBase.Push_Type,receiver []string,ignore_Typ
 		IgnoreReceiver: ignore_receiver,
 	}
 	var err error
-	_rq_push.Receive, err = anypb.New(msg)
+	_rq_push.Receive, err = gBase.MsgToByte(msg)
 	if err != nil{
 		p.LogError("Send Push Error %v",err.Error())
 		return false

@@ -254,7 +254,7 @@ func (p *SocketServer) onReceiveRequest(msg *SocketMessage) {
 		}
 	}
 }
-func (p *SocketServer) PushReceive(pType Push_Type,receiver []string,ignore_Type Push_Type,ignore_receiver string,msg_type uint32,msg []byte){
+func (p *SocketServer) PushMessage(pType Push_Type,receiver []string,ignore_Type Push_Type,ignore_receiver string,msg_type uint32,msg []byte){
 	if pType == Push_Type_ALL {
 		/// push all user
 		p.users.Range(func(key, value any) bool {
