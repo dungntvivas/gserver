@@ -14,6 +14,15 @@ import (
 	"sync"
 	"time"
 )
+func contains(slice []string, item string) bool {
+	set := make(map[string]struct{}, len(slice))
+	for _, s := range slice {
+		set[s] = struct{}{}
+	}
+
+	_, ok := set[item]
+	return ok
+}
 type SocketServer struct {
 	GServer
 	gnet.BuiltinEventEngine
@@ -148,9 +157,11 @@ func (p *SocketServer) MarkConnectioIsAuthen(token string,user_id string, fd str
 		p.mu_token.Lock()
 		if _s, ok := p.sessions.Load(token); ok {
 			cur_slice := _s.([]string)
-			cur_slice = append(cur_slice,fd)
-			p.sessions.Store(token,cur_slice)
-			p.LogInfo("%v",cur_slice)
+			if !contains(cur_slice,fd) {
+				cur_slice = append(cur_slice,fd)
+				p.sessions.Store(token,cur_slice)
+				p.LogInfo("%v",cur_slice)
+			}
 		} else {
 			p.sessions.Store(token,[]string{fd})
 		}
@@ -162,9 +173,11 @@ func (p *SocketServer) MarkConnectioIsAuthen(token string,user_id string, fd str
 		p.mu_user.Lock()
 		if _s, ok := p.users.Load(user_id); ok {
 			cur_slice := _s.([]string)
-			cur_slice = append(cur_slice,token)
-			p.LogInfo("%v",cur_slice)
-			p.users.Store(user_id,cur_slice)
+			if !contains(cur_slice,token) {
+				cur_slice = append(cur_slice,token)
+				p.LogInfo("%v",cur_slice)
+				p.users.Store(user_id,cur_slice)
+			}
 		} else {
 			p.users.Store(user_id,[]string{token})
 		}
