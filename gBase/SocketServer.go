@@ -493,6 +493,14 @@ func (p *SocketServer) onClientKeepAlive(msg *SocketMessage) {
 	} else {
 		msg.Conn.UpdateAt = uint64(time.Now().Unix())
 	}
+
+	conn_id := 0
+
+	conn_id = int(hlRequest.ConnectionId[0]) << 8
+	conn_id += int(hlRequest.ConnectionId[1])
+
+	//if hlRequest.ConnectionId
+
 	_re := api.KeepAlive_Reply{}
 	_buf, err := GetReplyBuffer(status, msg.MsgType, msg.MsgGroup, msg.MSG_ID, &_re, msg.Conn.Client.EncType, msg.Conn.Client.PKey)
 	if err != nil {
