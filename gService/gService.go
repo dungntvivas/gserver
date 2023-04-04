@@ -199,6 +199,8 @@ on_reply:
 		if reply.Status >= 1000 {
 			reply.Msg = api.ResultType(reply.Status).String()
 		}
+		reply.Group = payload.Request.Group
+		reply.Type = payload.Request.Type
 		if payload.Request.PayloadType == uint32(gBase.PayloadType_JSON) {
 			dataByte, _ = protojson.Marshal(reply)
 		} else if payload.Request.PayloadType == uint32(gBase.PayloadType_BIN) {
@@ -206,8 +208,7 @@ on_reply:
 		}
 
 		reply.BinReply = dataByte
-		reply.Group = payload.Request.Group
-		reply.Type = payload.Request.Type
+
 		payload.ChReply <- reply
 		return
 	}
