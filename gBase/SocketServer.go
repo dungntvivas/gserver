@@ -10,8 +10,10 @@ import (
 
 	"github.com/gobwas/ws"
 	"github.com/gobwas/ws/wsutil"
+	"github.com/golang/protobuf/jsonpb"
 	"github.com/panjf2000/gnet/v2"
 	"gitlab.vivas.vn/go/grpc_api/api"
+	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
 )
@@ -407,8 +409,22 @@ func (p *SocketServer) pushToConnection(connection_id string, rqPush *api.PushRe
 func (p *SocketServer) onSetupConnection(msg *SocketMessage) {
 	hlRequest := api.Hello_Request{}
 	status := uint32(api.ResultType_OK)
-	if err := msg.ToRequestProtoModel(&hlRequest); err != nil {
-		p.LogError("Request UnmarshalTo Hello_Request %v", err.Error())
+	ok := false
+	if msg.TypePayload == PayloadType_JSON {
+		if err := jsonpb.UnmarshalString(string(msg.Payload), &hlRequest); err == nil {
+			ok = true
+			p.LogError("Request UnmarshalTo Hello_Request %v", err.Error())
+		}
+	} else {
+		if err := msg.ToRequestProtoModel(&hlRequest); err == nil {
+			ok = true
+			p.LogError("Request UnmarshalTo Hello_Request %v", err.Error())
+
+		}
+
+	}
+
+	if !ok {
 		status = uint32(api.ResultType_REQUEST_INVALID)
 	} else {
 		// process
@@ -432,11 +448,28 @@ func (p *SocketServer) onSetupConnection(msg *SocketMessage) {
 	}
 	if c, o := p.clients.Load(fmt.Sprintf("%s_%d", p.Config.Protocol.String(), msg.Fd)); o {
 		if p.Config.Protocol == RequestProtocol_WS {
-			wsutil.WriteServerMessage((*c.(*gnet.Conn)), ws.OpBinary, _buf)
+			if msg.TypePayload == PayloadType_JSON {
+				_rep := api.Reply{
+					Status: status,
+					Msg:    api.ResultType(status).String(),
+				}
+				var err error
+				if status == 0 {
+					_rep.Reply, err = anypb.New(&hlreply)
+				}
+				dataByte, err := protojson.Marshal(&_rep)
+				if err != nil {
+					p.LogError("Proto to json %v", err.Error())
+				} else {
+					wsutil.WriteServerMessage((*c.(*gnet.Conn)), ws.OpText, dataByte)
+
+				}
+			} else {
+				wsutil.WriteServerMessage((*c.(*gnet.Conn)), ws.OpBinary, _buf)
+			}
 		} else {
 			(*c.(*gnet.Conn)).AsyncWrite(_buf, nil)
 		}
-
 	}
 }
 func (p *SocketServer) onClientKeepAlive(msg *SocketMessage) {
