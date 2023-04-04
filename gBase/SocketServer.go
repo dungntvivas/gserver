@@ -412,13 +412,13 @@ func (p *SocketServer) onSetupConnection(msg *SocketMessage) {
 	ok := false
 	if msg.TypePayload == PayloadType_JSON {
 		if err := jsonpb.UnmarshalString(string(msg.Payload), &hlRequest); err != nil {
-			p.LogError("Request UnmarshalTo Hello_Request %v", err.Error())
+			p.LogError("JSON Request UnmarshalTo Hello_Request %v", err.Error())
 		} else {
 			ok = true
 		}
 	} else {
 		if err := msg.ToRequestProtoModel(&hlRequest); err != nil {
-			p.LogError("Request UnmarshalTo Hello_Request %v", err.Error())
+			p.LogError("Binary Request UnmarshalTo Hello_Request %v", err.Error())
 
 		} else {
 			ok = true

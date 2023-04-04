@@ -153,6 +153,8 @@ func main() {
 				// encode send to server
 				newMsg := gBase.NewMessage(_request, uint32(api.Group_CONNECTION),request.Type,[]byte{1,2,3,4,5})
 				_p , _ := newMsg.Encode(gBase.Encryption_Type(hlReceive.ServerEncodeType),hlReceive.PKey)
+
+				fmt.Printf("%v",_p)
 				conn.Write(_p)
 			}else if msg.MsgType == uint32(api.TYPE_ID_REQUEST_HELLO) {
 				reply := api.Reply{}
