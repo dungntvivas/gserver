@@ -18,7 +18,7 @@ type RequestID struct {
 
 type HTTPServer struct {
 	gBase.GServer
-	listen net.Listener
+	listen  net.Listener
 	http_sv *http.Server
 }
 
@@ -55,7 +55,7 @@ func New(config gBase.ConfigOption, chReceiveRequest chan *gBase.Payload) *HTTPS
 
 func (p *HTTPServer) Serve() error {
 	p.LogInfo("Start %v server ", p.Config.ServerName)
-    var err error
+	var err error
 	p.listen, err = net.Listen("tcp", p.Config.Addr)
 	if err != nil {
 		return err
@@ -74,7 +74,7 @@ func (p *HTTPServer) Serve() error {
 	return nil
 }
 
-func (p *HTTPServer) Close(){
+func (p *HTTPServer) Close() {
 	p.LogInfo("Close")
 	p.http_sv.Shutdown(context.Background())
 	p.listen.Close()
@@ -102,11 +102,11 @@ func (p *HTTPServer) onReceiveRequest(ctx *gin.Context) {
 		p.LogError("err read param = [%v]", err.Error())
 		status = http.StatusBadRequest
 		goto on_return
-	}else{
+	} else {
 
 	}
 	request.Type = uint32(urlParams.TYPE)
-    request.Group = api.Group(urlParams.GROUP)
+	request.Group = api.Group(urlParams.GROUP)
 	bindata, err = io.ReadAll(ctx.Request.Body)
 	if err != nil {
 		p.LogError("Error read request body %v", err.Error())
@@ -119,14 +119,16 @@ func (p *HTTPServer) onReceiveRequest(ctx *gin.Context) {
 	p.HandlerRequest(&gBase.Payload{Request: request, ChReply: result})
 	// wait for return data
 	res = *<-result
+	res.Type = request.Type
+	res.Group = request.Group
 on_return:
 
 	if res.Status != 0 {
-		if(res.Status == uint32(api.ResultType_INTERNAL_SERVER_ERROR)){
+		if res.Status == uint32(api.ResultType_INTERNAL_SERVER_ERROR) {
 			status = http.StatusInternalServerError
-		}else if(res.Status == uint32(api.ResultType_SESSION_EXPIRE)){
+		} else if res.Status == uint32(api.ResultType_SESSION_EXPIRE) {
 			status = http.StatusForbidden
-		}else if(res.Status == uint32(api.ResultType_SESSION_INVALID)){
+		} else if res.Status == uint32(api.ResultType_SESSION_INVALID) {
 			status = http.StatusForbidden
 		}
 	}
