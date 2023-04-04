@@ -189,6 +189,7 @@ func (p *SocketServer) SendHelloMsg(newConn *Connection, _c *gnet.Conn) {
 	}
 	receive := api.Receive{
 		Type:       uint32(api.TYPE_ID_RECEIVE_HELLO),
+		Group:      api.Group_CONNECTION,
 		ServerTime: helloReceive.ServerTime,
 	}
 	_receiveAny, _ := anypb.New(&helloReceive)
@@ -272,8 +273,11 @@ func (p *SocketServer) onReceiveRequest(msg *SocketMessage) {
 	result := make(chan *api.Reply)
 	p.HandlerRequest(&Payload{Request: &rq, ChReply: result, Connection_id: fmt.Sprintf("%s_%d", p.Config.Protocol.String(), msg.Fd)})
 	res := *<-result
+	res.Type = rq.Type
+	res.Group = rq.Group
 	if res.Status != 0 {
 		res.Msg = api.ResultType(res.Status).String()
+
 	}
 
 	if _buf, err := GetReplyBuffer(res.Status, msg.MsgType, msg.MsgGroup, msg.MSG_ID, &res, msg.Conn.Client.EncType, msg.Conn.Client.PKey); err == nil {

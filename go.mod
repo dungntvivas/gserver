@@ -8,8 +8,8 @@ require (
 	github.com/golang/protobuf v1.5.2
 	github.com/google/uuid v1.3.0
 	github.com/panjf2000/gnet/v2 v2.1.2
-	gitlab.vivas.vn/go/grpc_api v0.9.22
-	gitlab.vivas.vn/go/internal v0.9.0
+	gitlab.vivas.vn/go/grpc_api v0.9.24
+	gitlab.vivas.vn/go/internal v0.9.4
 	google.golang.org/grpc v1.52.0
 	google.golang.org/protobuf v1.28.1
 
