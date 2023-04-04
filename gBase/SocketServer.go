@@ -411,10 +411,16 @@ func (p *SocketServer) onSetupConnection(msg *SocketMessage) {
 	status := uint32(api.ResultType_OK)
 	ok := false
 	if msg.TypePayload == PayloadType_JSON {
-		if err := jsonpb.UnmarshalString(string(msg.Payload), &hlRequest); err != nil {
+		_rq := api.Request{}
+		if err := jsonpb.UnmarshalString(string(msg.Payload), &_rq); err != nil {
 			p.LogError("JSON Request UnmarshalTo Hello_Request %v", err.Error())
 		} else {
-			ok = true
+			if err := _rq.Request.UnmarshalTo(&hlRequest); err != nil {
+				p.LogError("UnmarshalTo request to Hello_Request |  %v", err.Error())
+			}else{
+				ok = true
+			}
+
 		}
 	} else {
 		if err := msg.ToRequestProtoModel(&hlRequest); err != nil {
