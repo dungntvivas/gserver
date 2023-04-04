@@ -1,11 +1,12 @@
 package gService
 
 import (
-	"google.golang.org/protobuf/types/known/anypb"
 	"os"
 	"os/signal"
 	"runtime"
 	"sync"
+
+	"google.golang.org/protobuf/types/known/anypb"
 
 	"github.com/golang/protobuf/jsonpb"
 	"gitlab.vivas.vn/go/grpc_api/api"
@@ -28,8 +29,9 @@ type Service struct {
 	Operator       sync.Map
 	grpc_server    *gRPC.GRPCServer
 	gw_server      api.APIClient
-	gw_enable 	   bool
+	gw_enable      bool
 }
+
 func NewService(SvName string, _log *logger.Logger, config gBase.ConfigOption) *Service {
 	p := &Service{
 		Logger:         _log,
@@ -45,42 +47,42 @@ func NewService(SvName string, _log *logger.Logger, config gBase.ConfigOption) *
 
 	return p
 }
-func (p *Service) PushMessage(pType gBase.Push_Type,receiver []string,ignore_Type gBase.Push_Type,ignore_receiver string,msg_type uint32,msg *api.Receive) bool{
-	if !p.gw_enable{
+func (p *Service) PushMessage(pType gBase.Push_Type, receiver []string, ignore_Type gBase.Push_Type, ignore_receiver string, msg_type uint32, msg *api.Receive) bool {
+	if !p.gw_enable {
 		return false
 	}
 	_rq := api.Request{
-		Type: uint32(api.TYPE_INTERNAL_ID_PUSH_RECEIVE),
+		Type:  uint32(api.TYPE_INTERNAL_ID_PUSH_RECEIVE),
 		Group: api.Group_INTERNAL,
 	}
 	_rq_push := api.PushReceive_Request{
-		PushType: pType.Push_Type_to_proto_type(),
-		Receiver: receiver,
-		ReceiveType: msg_type,
-		Ignore_Type: ignore_Type.Push_Type_to_proto_type(),
+		PushType:       pType.Push_Type_to_proto_type(),
+		Receiver:       receiver,
+		ReceiveType:    msg_type,
+		Ignore_Type:    ignore_Type.Push_Type_to_proto_type(),
 		IgnoreReceiver: ignore_receiver,
-		RcType: msg.Type,
-		RcGroup: uint32(msg.Group),
+		RcType:         msg.Type,
+		RcGroup:        uint32(msg.Group),
 	}
 	var err error
 	_rq_push.Receive, err = gBase.MsgToByte(msg)
-	if err != nil{
-		p.LogError("Send Push Error %v",err.Error())
+	if err != nil {
+		p.LogError("Send Push Error %v", err.Error())
 		return false
 	}
 	_rq_push.ReceiveJson, err = protojson.Marshal(msg)
-	if err != nil{
-		p.LogError("Send Push Error %v",err.Error())
+	if err != nil {
+		p.LogError("Send Push Error %v", err.Error())
 		return false
 	}
-	_rq.Request ,err = anypb.New(&_rq_push)
-	if err != nil{
-		p.LogError("Send Push Error %v",err.Error())
+	_rq.Request, err = anypb.New(&_rq_push)
+	if err != nil {
+		p.LogError("Send Push Error %v", err.Error())
 		return false
 	}
 	_, err = gRPC.MakeRpcRequest(p.gw_server, &_rq)
 	if err != nil {
-		p.LogError("Send Push Error %v",err.Error())
+		p.LogError("Send Push Error %v", err.Error())
 		return false
 	}
 
@@ -106,9 +108,9 @@ func (p *Service) Start() {
 
 	if p.grpc_server.Config.GW != nil && len(p.grpc_server.Config.GW) != 0 {
 		var err error
-		p.gw_server, err = gRPC.NewClientConn("gw", "gw.com.vivas.vn",p.grpc_server.Config.GW...)
+		p.gw_server, err = gRPC.NewClientConn("gw", "gw.com.vivas.vn", p.grpc_server.Config.GW...)
 		if err != nil {
-			p.LogError("Start GRPC Client Error %v",err.Error())
+			p.LogError("Start GRPC Client Error %v", err.Error())
 			close(p.Done)
 			return
 		}
@@ -204,6 +206,8 @@ on_reply:
 		}
 
 		reply.BinReply = dataByte
+		reply.Group = payload.Request.Group
+		reply.Type = payload.Request.Type
 		payload.ChReply <- reply
 		return
 	}
