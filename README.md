@@ -4,11 +4,12 @@ là project được xây dựng trên ngôn ngữ go , Template khung để d�
 
 ## Overview
 
-* Hỗ trợ tạo dựng máy chủ GRPC
-* Hỗ trợ tạo dựng máy chủ HTTP
-* Hỗ trợ tạo dựng máy chủ TCP
-* Hỗ trợ tạo dựng máy chủ WS
-* Hỗ trợ tạo dựng máy chủ UDS
+- [x] Hỗ trợ tạo dựng máy chủ GRPC
+- [x] Hỗ trợ tạo dựng máy chủ HTTP
+- [x] Hỗ trợ tạo dựng máy chủ TCP
+- [x] Hỗ trợ tạo dựng máy chủ WS
+- [x] Hỗ trợ tạo dựng máy chủ UDS
+- [ ] Hỗ trợ tạo dựng máy chủ UDP 
 
 ## Ví dụ để khởi tạo một máy chủ microservice grpc 
 
