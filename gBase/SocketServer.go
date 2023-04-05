@@ -197,7 +197,7 @@ func (p *SocketServer) SendHelloMsg(newConn *Connection, _c *gnet.Conn) {
 	_receiveAny, _ := anypb.New(&helloReceive)
 	receive.Receive = _receiveAny
 	_receive_bin, _ := proto.Marshal(&receive)
-	msg := NewMessage(_receive_bin, 0, receive.Type, []byte{0x86, 0x73, 0x86, 0x65, 0x83})
+	msg := NewMessage(_receive_bin, uint32(receive.Group), receive.Type, []byte{0x86, 0x73, 0x86, 0x65, 0x83})
 	out, _ := msg.Encode(Encryption_NONE, nil)
 	(*_c).AsyncWrite(out, nil)
 }
@@ -417,7 +417,7 @@ func (p *SocketServer) onSetupConnection(msg *SocketMessage) {
 		} else {
 			if err := _rq.Request.UnmarshalTo(&hlRequest); err != nil {
 				p.LogError("UnmarshalTo request to Hello_Request |  %v", err.Error())
-			}else{
+			} else {
 				ok = true
 			}
 
