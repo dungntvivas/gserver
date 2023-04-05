@@ -71,12 +71,14 @@ func GetReceiveBuffer(msgType uint32,msgGroup uint32,encodeType Encryption_Type,
 	return _buf,nil
 }
 
-func GetReplyBuffer(status uint32,msgType uint32,msgGroup uint32,msgID []byte,src proto.Message,encodeType Encryption_Type,pKey []byte) ([]byte,error){
-	reply := NewReply(status)
-	if (src != nil){
-		if err := PackReply(reply,src);err != nil {
-			return nil,err
-		}
+func GetReplyBuffer(msgType uint32,msgGroup uint32,msgID []byte,src *api.Reply,encodeType Encryption_Type,pKey []byte) ([]byte,error){
+	reply := NewReply(src.Status)
+	reply.Msg = src.Msg
+	reply.Type = msgType
+	reply.Group = api.Group(msgGroup)
+
+	if (src.Reply != nil){
+		reply.Reply = src.Reply
 	}
 	_rep_buf,err := MsgToByte(reply)
 	if err != nil {

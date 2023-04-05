@@ -247,7 +247,9 @@ func (p *SocketServer) onReceiveRequest(msg *SocketMessage) {
 		// check authen
 		if !msg.Conn.isOK() {
 			p.LogError("Connection %d - isAuthen %v -- group %v -- type %v", msg.Fd, msg.Conn.Client.IsAuthen, msg.MsgGroup, msg.MsgType)
-			if _buf, err := GetReplyBuffer(uint32(api.ResultType_REQUEST_INVALID), msg.MsgType, msg.MsgGroup, msg.MSG_ID, nil, Encryption_NONE, nil); err == nil {
+			_re := NewReply(uint32(api.ResultType_REQUEST_INVALID))
+			_re.Msg = "REQUEST_INVALID"
+			if _buf, err := GetReplyBuffer(msg.MsgType, msg.MsgGroup, msg.MSG_ID, _re, Encryption_NONE, nil); err == nil {
 				if c, o := p.clients.Load(fmt.Sprintf("%s_%d", p.Config.Protocol.String(), msg.Fd)); o {
 					if p.Config.Protocol == RequestProtocol_WS {
 						if msg.TypePayload == PayloadType_JSON {
@@ -282,7 +284,7 @@ func (p *SocketServer) onReceiveRequest(msg *SocketMessage) {
 
 	}
 
-	if _buf, err := GetReplyBuffer(res.Status, msg.MsgType, msg.MsgGroup, msg.MSG_ID, &res, msg.Conn.Client.EncType, msg.Conn.Client.PKey); err == nil {
+	if _buf, err := GetReplyBuffer(msg.MsgType, msg.MsgGroup, msg.MSG_ID,&res, msg.Conn.Client.EncType, msg.Conn.Client.PKey); err == nil {
 		if c, o := p.clients.Load(fmt.Sprintf("%s_%d", p.Config.Protocol.String(), msg.Fd)); o {
 			if p.Config.Protocol == RequestProtocol_WS {
 				if msg.TypePayload == PayloadType_JSON {
@@ -449,7 +451,9 @@ func (p *SocketServer) onSetupConnection(msg *SocketMessage) {
 		ServerEncodeType: api.EncodeType(msg.Conn.Server.DecType),
 		PKey:             msg.Conn.Server.PKey,
 	}
-	_buf, err := GetReplyBuffer(status, msg.MsgType, msg.MsgGroup, msg.MSG_ID, &hlreply, msg.Conn.Client.EncType, msg.Conn.Client.PKey)
+	_repl := NewReply(status)
+	PackReply(_repl,&hlreply)
+	_buf, err := GetReplyBuffer(msg.MsgType, msg.MsgGroup, msg.MSG_ID,_repl, msg.Conn.Client.EncType, msg.Conn.Client.PKey)
 	if err != nil {
 		p.LogError("Error %v", err.Error())
 	}
@@ -506,7 +510,9 @@ func (p *SocketServer) onClientKeepAlive(msg *SocketMessage) {
 	//if hlRequest.ConnectionId
 
 	_re := api.KeepAlive_Reply{}
-	_buf, err := GetReplyBuffer(status, msg.MsgType, msg.MsgGroup, msg.MSG_ID, &_re, msg.Conn.Client.EncType, msg.Conn.Client.PKey)
+	_nre := NewReply(status)
+	PackReply(_nre,&_re)
+	_buf, err := GetReplyBuffer(msg.MsgType, msg.MsgGroup, msg.MSG_ID,_nre, msg.Conn.Client.EncType, msg.Conn.Client.PKey)
 	if err != nil {
 		p.LogError("Error %v", err.Error())
 		return
