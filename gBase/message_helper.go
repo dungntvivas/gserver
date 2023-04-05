@@ -63,7 +63,7 @@ func GetReceiveBuffer(msgType uint32,msgGroup uint32,encodeType Encryption_Type,
 		MSG_ID: []byte{0x86,0x73,0x86,0x65,0x83},
 	}
 	/// MSG SOCKET ENCODE
-	_buf, err := _msg.Encode(encodeType, pKey)
+	_buf, err := _msg.Encode(encodeType, pKey,true)
 	if err != nil {
 		return  nil,err
 	}
@@ -92,7 +92,7 @@ func GetReplyBuffer(msgType uint32,msgGroup uint32,msgID []byte,src *api.Reply,e
 		MSG_ID: msgID,
 	}
 	/// MSG SOCKET ENCODE
-	_buf, err := _msg.Encode(encodeType, pKey)
+	_buf, err := _msg.Encode(encodeType, pKey,false)
 	if err != nil {
 		return  nil,err
 	}

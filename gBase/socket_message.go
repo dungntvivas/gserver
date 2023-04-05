@@ -318,7 +318,7 @@ func (p *SocketMessage) DecodePayloadIfNeed() {
 
 }
 
-func (p *SocketMessage) Encode(encodeType Encryption_Type, pKey []byte) ([]byte, error) { // sử dụng public key của client để encode Payload
+func (p *SocketMessage) Encode(encodeType Encryption_Type, pKey []byte,isReceive bool) ([]byte, error) { // sử dụng public key của client để encode Payload
 
 	out_buf := []byte{0x82, 0x68, 0x80, 0x65, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0}
 	var msg_id_size = 5
@@ -329,11 +329,16 @@ func (p *SocketMessage) Encode(encodeType Encryption_Type, pKey []byte) ([]byte,
 	/// TYPE
 	out_buf[8] = byte(p.MsgType & 0xFF)
 
+
 	/// FLAG MSG ID
 	if len(p.MSG_ID) != 0 { // no id
 		size += msg_id_size
 		out_buf[10] = out_buf[10] | 0x2
 		out_buf = append(out_buf, p.MSG_ID...)
+	}
+
+	if isReceive {
+		out_buf[10] = out_buf[10] | 0x1
 	}
 
 	/// FLAG - ENCODE , ENCODE TYPE

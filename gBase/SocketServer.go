@@ -198,7 +198,7 @@ func (p *SocketServer) SendHelloMsg(newConn *Connection, _c *gnet.Conn) {
 	receive.Receive = _receiveAny
 	_receive_bin, _ := proto.Marshal(&receive)
 	msg := NewMessage(_receive_bin, uint32(receive.Group), receive.Type, []byte{0x86, 0x73, 0x86, 0x65, 0x83})
-	out, _ := msg.Encode(Encryption_NONE, nil)
+	out, _ := msg.Encode(Encryption_NONE, nil,true)
 	(*_c).AsyncWrite(out, nil)
 }
 func (p *SocketServer) OnTraffic(c gnet.Conn) gnet.Action {

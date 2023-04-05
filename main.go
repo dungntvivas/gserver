@@ -127,7 +127,7 @@ func main() {
 			}
 
 			fmt.Printf("Msg Type %v group %v\n", msg.MsgType, msg.MsgGroup)
-			if msg.MsgType == uint32(api.TYPE_ID_RECEIVE_HELLO) && msg.MsgGroup == 0 {
+			if msg.MsgType == uint32(api.TYPE_ID_RECEIVE_HELLO) && msg.MsgGroup == uint32(api.Group_CONNECTION) {
 				/// Receive Msg
 				receive := api.Receive{}
 				msg.ToProtoModel(&receive)
@@ -153,7 +153,7 @@ func main() {
 
 				// encode send to server
 				newMsg := gBase.NewMessage(_request, uint32(api.Group_CONNECTION), request.Type, []byte{1, 2, 3, 4, 5})
-				_p, _ := newMsg.Encode(gBase.Encryption_Type(hlReceive.ServerEncodeType), hlReceive.PKey)
+				_p, _ := newMsg.Encode(gBase.Encryption_Type(hlReceive.ServerEncodeType), hlReceive.PKey,false)
 
 				fmt.Printf("%v", _p)
 				conn.Write(_p)
@@ -187,7 +187,7 @@ func main() {
 						break
 					}
 					newMsg := gBase.NewMessage(_rq, uint32(api.Group_AUTHEN), rq.Type, []byte{2, 3, 4, 5, 6})
-					_p, _ := newMsg.Encode(gBase.Encryption_Type(hlReceive.ServerEncodeType), hlReceive.PKey)
+					_p, _ := newMsg.Encode(gBase.Encryption_Type(hlReceive.ServerEncodeType), hlReceive.PKey,false)
 					fmt.Printf("Send Login Request ")
 					conn.Write(_p)
 
@@ -206,6 +206,23 @@ func main() {
 
 					} else {
 						fmt.Printf("Session %v", reply_login.Session.SessionId)
+
+						rq := gBase.NewRequest(uint32(api.TYPE_ID_REQUEST_KEEPALIVE), api.Group_CONNECTION)
+						pingRequest := api.KeepAlive_Request{
+							ConnectionId: hlReply.ConnectionId,
+						}
+						if err := gBase.PackRequest(rq, &pingRequest); err != nil {
+							fmt.Printf("%v", err.Error())
+							break
+						}
+						_rq, err := gBase.MsgToByte(rq)
+						if err != nil {
+							fmt.Printf("%v", err.Error())
+							break
+						}
+						newMsg := gBase.NewMessage(_rq, uint32(api.Group_CONNECTION), rq.Type, []byte{2, 3, 4, 5, 6})
+						_p, _ := newMsg.Encode(gBase.Encryption_Type(hlReceive.ServerEncodeType), hlReceive.PKey,false)
+						conn.Write(_p)
 					}
 
 				}
@@ -226,7 +243,7 @@ func main() {
 					break
 				}
 				newMsg := gBase.NewMessage(_rq, uint32(api.Group_CONNECTION), rq.Type, []byte{2, 3, 4, 5, 6})
-				_p, _ := newMsg.Encode(gBase.Encryption_Type(hlReceive.ServerEncodeType), hlReceive.PKey)
+				_p, _ := newMsg.Encode(gBase.Encryption_Type(hlReceive.ServerEncodeType), hlReceive.PKey,false)
 				conn.Write(_p)
 
 			}
