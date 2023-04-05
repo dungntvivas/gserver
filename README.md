@@ -5,9 +5,9 @@ là project được xây dựng trên ngôn ngữ go , Template khung để d�
 ## Overview
 
 - [x] Hỗ trợ tạo dựng máy chủ GRPC
-- [x] Hỗ trợ tạo dựng máy chủ HTTP
+- [x] Hỗ trợ tạo dựng máy chủ HTTP ( payload json (application/json) hoặc bin protobuf (application/octet-stream) )
 - [x] Hỗ trợ tạo dựng máy chủ TCP
-- [x] Hỗ trợ tạo dựng máy chủ WS
+- [x] Hỗ trợ tạo dựng máy chủ WS (payload json (opCode=text) hoặc bin protobuf (opCode = binary) )
 - [x] Hỗ trợ tạo dựng máy chủ UDS
 - [ ] Hỗ trợ tạo dựng máy chủ UDP 
 
@@ -59,7 +59,6 @@ func (p *EchoServer) HanderRequest(request *api.Request, reply *api.Reply) uint3
 	reply.Status = uint32(api.ResultType_OK)
 	reply.Msg = "OK"
 	return uint32(api.ResultType_OK)
-
 }
 
 func main()  {
