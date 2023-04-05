@@ -6,6 +6,7 @@ là project được xây dựng trên ngôn ngữ go , Template khung để d�
 
 - [x] Hỗ trợ tạo dựng máy chủ GRPC
 - [x] Hỗ trợ tạo dựng máy chủ HTTP ( payload json (application/json) hoặc bin protobuf (application/octet-stream) )
+- [ ] Hỗ trợ tạo dựng máy chủ QUIC
 - [x] Hỗ trợ tạo dựng máy chủ TCP
 - [x] Hỗ trợ tạo dựng máy chủ WS (payload json (opCode=text) hoặc bin protobuf (opCode = binary) )
 - [x] Hỗ trợ tạo dựng máy chủ UDS
