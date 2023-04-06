@@ -73,3 +73,17 @@ func main()  {
 }
 
 ```
+
+## Ví dụ để khởi tạo một máy chủ http/2
+```go
+    done := make(chan struct{})
+	chReceiveRequest := make(chan *gBase.Payload)
+	_logger, _ := logger.New(logger.Info, logger.LogDestinations{logger.DestinationFile: {}, logger.DestinationStdout: {}}, "/tmp/server.log")
+	cf := gBase.DefaultHttpsConfigOption
+	cf.Logger = _logger
+	cf.Tls.Cert = "certificate.pem"
+	cf.Tls.Key = "/private.key"
+	cf.Done = &done
+	hsv2 := gHTTP.New(cf,chReceiveRequest)
+	hsv2.Serve()
+```
