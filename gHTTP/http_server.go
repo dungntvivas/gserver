@@ -2,6 +2,8 @@ package gHTTP
 
 import (
 	"context"
+	"golang.org/x/net/http2"
+	"golang.org/x/net/http2/h2c"
 	"io"
 	"net"
 	"net/http"
@@ -42,12 +44,23 @@ func New(config gBase.ConfigOption, chReceiveRequest chan *gBase.Payload) *HTTPS
 	}
 	gin.SetMode(gin.ReleaseMode)
 	http_sv := gin.New()
+	http_sv.Any("/info", func(c *gin.Context) {
+		c.Data(http.StatusOK,"application/json", []byte("{\"status\":\"OK\"}"))
+	})
 	gV1 := http_sv.Group("/v1")
 	{
 		gV1.POST("/:group/:type", p.onReceiveRequest)
 	}
-	p.http_sv = &http.Server{
-		Handler: http_sv,
+
+	if p.Config.Tls.H2_Enable {
+		p.http_sv = &http.Server{
+			Handler: h2c.NewHandler(http_sv,&http2.Server{}),
+			MaxHeaderBytes: http.DefaultMaxHeaderBytes,
+		}
+	}else{
+		p.http_sv = &http.Server{
+			Handler: http_sv,
+		}
 	}
 
 	return p
@@ -62,9 +75,19 @@ func (p *HTTPServer) Serve() error {
 	}
 	if p.Config.Tls.IsTLS {
 		if p.Config.Tls.H2_Enable {
-			go p.http_sv.ServeTLS(p.listen, p.Config.Tls.Cert, p.Config.Tls.Key)
+			go func() {
+				_err := p.http_sv.ServeTLS(p.listen, p.Config.Tls.Cert, p.Config.Tls.Key)
+				if _err != nil {
+					p.LogError("%v",_err)
+				}
+			}()
 		} else {
-			go p.http_sv.ServeTLS(p.listen, p.Config.Tls.Cert, p.Config.Tls.Key)
+			go func() {
+				_err := p.http_sv.ServeTLS(p.listen, p.Config.Tls.Cert, p.Config.Tls.Key)
+				if _err != nil {
+					p.LogError("%v",_err)
+				}
+			}()
 		}
 		p.LogInfo("Listener opened on %s", p.Config.Addr)
 	} else {

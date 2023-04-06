@@ -2,24 +2,36 @@ package main
 
 import (
 	"fmt"
-	"io"
-	"net"
-	"time"
-
 	"gitlab.vivas.vn/go/grpc_api/api"
 	"gitlab.vivas.vn/go/gserver/gBase"
+	"gitlab.vivas.vn/go/gserver/gHTTP"
 	"gitlab.vivas.vn/go/internal/encryption/aes"
 	"gitlab.vivas.vn/go/internal/encryption/rsa"
 	"gitlab.vivas.vn/go/internal/encryption/xor"
+	"gitlab.vivas.vn/go/internal/logger"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
+	"io"
+	"net"
+	"time"
 )
 
 func main() {
 
 	done := make(chan struct{})
-	//chReceiveRequest := make(chan *gBase.Payload)
-	//_logger, _ := logger.New(logger.Info, logger.LogDestinations{logger.DestinationFile: {}, logger.DestinationStdout: {}}, "/tmp/server.log")
+	chReceiveRequest := make(chan *gBase.Payload)
+	_logger, _ := logger.New(logger.Info, logger.LogDestinations{logger.DestinationFile: {}, logger.DestinationStdout: {}}, "/tmp/server.log")
+
+	cf := gBase.DefaultHttpsConfigOption
+	cf.Logger = _logger
+	cf.Tls.Cert = "/Users/dungnt/Desktop/vivas/certificate.pem"
+	cf.Tls.Key = "/Users/dungnt/Desktop/vivas/private.key"
+	cf.Done = &done
+	hsv := gHTTP.New(cf,chReceiveRequest)
+	hsv.Serve()
+
+
+	//
 	//
 	//tcp_option := gBase.DefaultTcpSocketConfigOption
 	//tcp_option.EncodeType = gBase.Encryption_XOR
@@ -83,6 +95,9 @@ func main() {
 	//}
 	//
 	//time.Sleep(time.Second * 2)
+
+
+
 	conn, err := net.Dial("tcp", "10.3.3.119:8083")
 	if err != nil {
 		fmt.Println(err)

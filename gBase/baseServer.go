@@ -125,6 +125,26 @@ var DefaultHttpConfigOption = ConfigOption{
 	ServerName: "HTTP",
 	EncodeType: Encryption_NONE,
 }
+var DefaultHttpsConfigOption = ConfigOption{
+	Addr:       ":44422",
+	Tls:        TLS{
+		IsTLS: true,
+		H2_Enable: false,
+	},
+	Protocol:   RequestProtocol_HTTP,
+	ServerName: "HTTP",
+	EncodeType: Encryption_NONE,
+}
+var DefaultHttp2ConfigOption = ConfigOption{
+	Addr:       ":44322",
+	Tls:        TLS{
+		IsTLS: true,
+		H2_Enable: true,
+	},
+	Protocol:   RequestProtocol_HTTP,
+	ServerName: "HTTP",
+	EncodeType: Encryption_NONE,
+}
 var DefaultGrpcConfigOption = ConfigOption{
 	Addr:       ":44226",
 	Tls:        TLS{IsTLS: false},
