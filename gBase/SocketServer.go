@@ -229,7 +229,6 @@ loop:
 	}
 }
 func (p *SocketServer) onReceiveRequest(msg *SocketMessage) {
-
 	if msg.MsgType == uint32(api.TYPE_ID_REQUEST_HELLO) && msg.MsgGroup == uint32(api.Group_CONNECTION) {
 		p.onSetupConnection(msg)
 		return
@@ -238,7 +237,6 @@ func (p *SocketServer) onReceiveRequest(msg *SocketMessage) {
 		p.LogError("Connection Decode Invalid [server %v - payload %v]", msg.Conn.Server.DecType, msg.MSG_encode_decode_type)
 		return
 	}
-
 	if msg.MsgType == uint32(api.TYPE_ID_REQUEST_KEEPALIVE) && msg.MsgGroup == uint32(api.Group_CONNECTION) {
 		p.onClientKeepAlive(msg)
 		return
@@ -283,7 +281,6 @@ func (p *SocketServer) onReceiveRequest(msg *SocketMessage) {
 		res.Msg = api.ResultType(res.Status).String()
 
 	}
-
 	if _buf, err := GetReplyBuffer(msg.MsgType, msg.MsgGroup, msg.MSG_ID,&res, msg.Conn.Client.EncType, msg.Conn.Client.PKey); err == nil {
 		if c, o := p.clients.Load(fmt.Sprintf("%s_%d", p.Config.Protocol.String(), msg.Fd)); o {
 			if p.Config.Protocol == RequestProtocol_WS {

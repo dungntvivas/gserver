@@ -132,7 +132,7 @@ var DefaultHttpsConfigOption = ConfigOption{
 		H2_Enable: false,
 	},
 	Protocol:   RequestProtocol_HTTP,
-	ServerName: "HTTP",
+	ServerName: "HTTPS",
 	EncodeType: Encryption_NONE,
 }
 var DefaultHttp2ConfigOption = ConfigOption{
@@ -140,6 +140,15 @@ var DefaultHttp2ConfigOption = ConfigOption{
 	Tls:        TLS{
 		IsTLS: true,
 		H2_Enable: true,
+	},
+	Protocol:   RequestProtocol_HTTP,
+	ServerName: "H2",
+	EncodeType: Encryption_NONE,
+}
+var DefaultHttp3QUICConfigOption = ConfigOption{
+	Addr:       ":44322",
+	Tls:        TLS{
+		IsTLS: true,
 	},
 	Protocol:   RequestProtocol_HTTP,
 	ServerName: "HTTP",
