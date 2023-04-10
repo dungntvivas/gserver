@@ -53,7 +53,7 @@ func (p *Service) PushMessage(pType gBase.Push_Type, receiver []string, ignore_T
 	}
 	_rq := api.Request{
 		Type:  uint32(api.TYPE_INTERNAL_ID_PUSH_RECEIVE),
-		Group: api.Group_INTERNAL,
+		Group: uint32(api.INTERNAL_GROUP_INTERNAL_GROUP_ID),
 	}
 	_rq_push := api.PushReceive_Request{
 		PushType:       pType.Push_Type_to_proto_type(),
