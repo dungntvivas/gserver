@@ -49,7 +49,7 @@ type SocketServer struct {
 }
 type APIGenerated struct {
 	Type  int    `json:"type"`
-	Group string `json:"group"`
+	Group int `json:"group"`
 }
 
 func NewSocket(config ConfigOption, chReceiveRequest chan *Payload) SocketServer {
@@ -191,7 +191,7 @@ func (p *SocketServer) SendHelloMsg(newConn *Connection, _c *gnet.Conn) {
 	}
 	receive := api.Receive{
 		Type:       uint32(api.TYPE_ID_RECEIVE_HELLO),
-		Group:      api.Group_CONNECTION,
+		Group:      uint32(api.CONNECTION_GROUP_CONNECTION_GROUP_ID),
 		ServerTime: helloReceive.ServerTime,
 	}
 	_receiveAny, _ := anypb.New(&helloReceive)
@@ -229,7 +229,7 @@ loop:
 	}
 }
 func (p *SocketServer) onReceiveRequest(msg *SocketMessage) {
-	if msg.MsgType == uint32(api.TYPE_ID_REQUEST_HELLO) && msg.MsgGroup == uint32(api.Group_CONNECTION) {
+	if msg.MsgType == uint32(api.TYPE_ID_REQUEST_HELLO) && msg.MsgGroup == uint32(api.CONNECTION_GROUP_CONNECTION_GROUP_ID) {
 		p.onSetupConnection(msg)
 		return
 	}
@@ -237,11 +237,11 @@ func (p *SocketServer) onReceiveRequest(msg *SocketMessage) {
 		p.LogError("Connection Decode Invalid [server %v - payload %v]", msg.Conn.Server.DecType, msg.MSG_encode_decode_type)
 		return
 	}
-	if msg.MsgType == uint32(api.TYPE_ID_REQUEST_KEEPALIVE) && msg.MsgGroup == uint32(api.Group_CONNECTION) {
+	if msg.MsgType == uint32(api.TYPE_ID_REQUEST_KEEPALIVE) && msg.MsgGroup == uint32(api.CONNECTION_GROUP_CONNECTION_GROUP_ID) {
 		p.onClientKeepAlive(msg)
 		return
 	}
-	if msg.MsgGroup != uint32(api.Group_AUTHEN) {
+	if msg.MsgGroup != uint32(api.AUTHEN_GROUP_AUTHEN_GROUP_ID) {
 		// check authen
 		if !msg.Conn.isOK() {
 			p.LogError("Connection %d - isAuthen %v -- group %v -- type %v", msg.Fd, msg.Conn.Client.IsAuthen, msg.MsgGroup, msg.MsgType)
@@ -267,7 +267,7 @@ func (p *SocketServer) onReceiveRequest(msg *SocketMessage) {
 	}
 	rq := api.Request{}
 	rq.Type = msg.MsgType
-	rq.Group = api.Group(msg.MsgGroup)
+	rq.Group = msg.MsgGroup
 	rq.BinRequest = msg.Payload
 	rq.PayloadType = uint32(msg.TypePayload)
 	rq.Protocol = uint32(p.Config.Protocol)

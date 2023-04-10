@@ -179,7 +179,7 @@ func WebsocketDecodePackage(log *logger.Logger,c gnet.Conn) ([]*SocketMessage,gn
 			}
 			soc := &SocketMessage{
 				MsgType:  uint32(rq.Type),
-				MsgGroup: uint32(api.Group_value[rq.Group]),
+				MsgGroup: uint32(rq.Group),
 				MSG_ID: []byte{0,1,2,3,4},
 				Payload: message.Payload,
 				TypePayload:PayloadType_JSON,
@@ -289,7 +289,7 @@ loop:
 			}
 
 		} else {
-			if _socketMSG.MsgGroup != uint32(api.Group_CONNECTION) && conn.Server.IsSetupConnection == false {
+			if _socketMSG.MsgGroup != uint32(api.CONNECTION_GROUP_CONNECTION_GROUP_ID) && conn.Server.IsSetupConnection == false {
 				log.Log(logger.Info, "Kết nối chưa xác lập encode-decode")
 				c.Peek(-1) // xóa buffer
 				break loop

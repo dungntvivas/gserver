@@ -129,7 +129,7 @@ func (p *HTTPServer) onReceiveRequest(ctx *gin.Context) {
 
 	}
 	request.Type = uint32(urlParams.TYPE)
-	request.Group = api.Group(urlParams.GROUP)
+	request.Group = uint32(urlParams.GROUP)
 	bindata, err = io.ReadAll(ctx.Request.Body)
 	if err != nil {
 		p.LogError("Error read request body %v", err.Error())

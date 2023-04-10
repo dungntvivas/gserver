@@ -24,7 +24,7 @@ func NewHelloReceive(pKey []byte, encode int) (*anypb.Any, error) {
 	return anypb.New(&hb)
 }
 
-func NewRequest(requestType uint32,group api.Group) *api.Request{
+func NewRequest(requestType uint32,group uint32) *api.Request{
 	request := api.Request{
 		Type: requestType,
 		Group: group,
@@ -75,7 +75,7 @@ func GetReplyBuffer(msgType uint32,msgGroup uint32,msgID []byte,src *api.Reply,e
 	reply := NewReply(src.Status)
 	reply.Msg = src.Msg
 	reply.Type = msgType
-	reply.Group = api.Group(msgGroup)
+	reply.Group = msgGroup
 
 	if (src.Reply != nil){
 		reply.Reply = src.Reply
