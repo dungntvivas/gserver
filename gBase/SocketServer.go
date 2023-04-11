@@ -48,7 +48,7 @@ type SocketServer struct {
 	// in
 }
 type APIGenerated struct {
-	Type  int    `json:"type"`
+	Type  int `json:"type"`
 	Group int `json:"group"`
 }
 
@@ -135,7 +135,7 @@ func (p *SocketServer) OnClose(c gnet.Conn, err error) (action gnet.Action) {
 	return gnet.Close
 }
 func (p *SocketServer) MarkConnectioIsAuthen(token string, user_id string, fd string, payload_type PayloadType) {
-
+	p.LogInfo("Mark Connection %v - %v - %v", fd, token, user_id)
 	go func() {
 		// đánh dấu connection id thuộc session nào
 		p.mu.Lock()
@@ -198,7 +198,7 @@ func (p *SocketServer) SendHelloMsg(newConn *Connection, _c *gnet.Conn) {
 	receive.Receive = _receiveAny
 	_receive_bin, _ := proto.Marshal(&receive)
 	msg := NewMessage(_receive_bin, uint32(receive.Group), receive.Type, []byte{0x86, 0x73, 0x86, 0x65, 0x83})
-	out, _ := msg.Encode(Encryption_NONE, nil,true)
+	out, _ := msg.Encode(Encryption_NONE, nil, true)
 	(*_c).AsyncWrite(out, nil)
 }
 func (p *SocketServer) OnTraffic(c gnet.Conn) gnet.Action {
@@ -281,7 +281,7 @@ func (p *SocketServer) onReceiveRequest(msg *SocketMessage) {
 		res.Msg = api.ResultType(res.Status).String()
 
 	}
-	if _buf, err := GetReplyBuffer(msg.MsgType, msg.MsgGroup, msg.MSG_ID,&res, msg.Conn.Client.EncType, msg.Conn.Client.PKey); err == nil {
+	if _buf, err := GetReplyBuffer(msg.MsgType, msg.MsgGroup, msg.MSG_ID, &res, msg.Conn.Client.EncType, msg.Conn.Client.PKey); err == nil {
 		if c, o := p.clients.Load(fmt.Sprintf("%s_%d", p.Config.Protocol.String(), msg.Fd)); o {
 			if p.Config.Protocol == RequestProtocol_WS {
 				if msg.TypePayload == PayloadType_JSON {
@@ -350,16 +350,14 @@ func (p *SocketServer) pushToUser(user_id string, rqPush *api.PushReceive_Reques
 
 			return true
 		})
-
 	}
 }
 func (p *SocketServer) pushToSession(session_id string, rqPush *api.PushReceive_Request) {
 	/// Lấy danh sách connection của 1 session
-	p.LogInfo("pushToSession")
+	p.LogInfo("pushToSession %v", session_id)
 	if connections_map, ok := p.sessions.Load(session_id); ok {
 		session_has_connection := connections_map.(sync.Map)
 		session_has_connection.Range(func(key, value any) bool {
-
 			if rqPush.Ignore_Type == api.PushReceive_TO_CONNECTION {
 				if key.(string) != rqPush.IgnoreReceiver {
 					p.pushToConnection(key.(string), rqPush)
@@ -449,8 +447,8 @@ func (p *SocketServer) onSetupConnection(msg *SocketMessage) {
 		PKey:             msg.Conn.Server.PKey,
 	}
 	_repl := NewReply(status)
-	PackReply(_repl,&hlreply)
-	_buf, err := GetReplyBuffer(msg.MsgType, msg.MsgGroup, msg.MSG_ID,_repl, msg.Conn.Client.EncType, msg.Conn.Client.PKey)
+	PackReply(_repl, &hlreply)
+	_buf, err := GetReplyBuffer(msg.MsgType, msg.MsgGroup, msg.MSG_ID, _repl, msg.Conn.Client.EncType, msg.Conn.Client.PKey)
 	if err != nil {
 		p.LogError("Error %v", err.Error())
 	}
@@ -508,8 +506,8 @@ func (p *SocketServer) onClientKeepAlive(msg *SocketMessage) {
 
 	_re := api.KeepAlive_Reply{}
 	_nre := NewReply(status)
-	PackReply(_nre,&_re)
-	_buf, err := GetReplyBuffer(msg.MsgType, msg.MsgGroup, msg.MSG_ID,_nre, msg.Conn.Client.EncType, msg.Conn.Client.PKey)
+	PackReply(_nre, &_re)
+	_buf, err := GetReplyBuffer(msg.MsgType, msg.MsgGroup, msg.MSG_ID, _nre, msg.Conn.Client.EncType, msg.Conn.Client.PKey)
 	if err != nil {
 		p.LogError("Error %v", err.Error())
 		return

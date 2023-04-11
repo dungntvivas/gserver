@@ -3,6 +3,7 @@ package gBase
 import (
 	"encoding/json"
 	"fmt"
+
 	"github.com/gobwas/ws"
 
 	"github.com/google/uuid"
@@ -69,7 +70,6 @@ type SocketMessage struct {
 	Lable                  []byte // dùng để giải mã,xor key với XOR , là  iv_key với AES , lable_rsa với RSA
 	Conn                   *Connection
 }
-
 
 func (m *SocketMessage) ToProtoModel(src proto.Message) error {
 	m.DecodePayloadIfNeed()
@@ -146,58 +146,57 @@ func DecodeData(data []byte, n int) *SocketMessage {
 	return &_socketMSG
 }
 
-func WebsocketDecodePackage(log *logger.Logger,c gnet.Conn) ([]*SocketMessage,gnet.Action){
+func WebsocketDecodePackage(log *logger.Logger, c gnet.Conn) ([]*SocketMessage, gnet.Action) {
 	codec := c.Context().(*Connection)
 	if codec.readBufferBytes(c) == gnet.Close {
-		log.Log(logger.Error,"gnet.Close")
-		return nil,gnet.Close
+		log.Log(logger.Error, "gnet.Close")
+		return nil, gnet.Close
 	}
 	ok, _ := codec.upgrade(c)
 	if !ok {
-		log.Log(logger.Error,"Update http to websocket error")
-		return nil,gnet.Close
+		log.Log(logger.Error, "Update http to websocket error")
+		return nil, gnet.Close
 	}
 	if codec.buf.Len() <= 0 {
-		return nil,gnet.None
+		return nil, gnet.None
 	}
 	messages, err := codec.wsDecode(c)
 	if err != nil {
-		log.Log(logger.Error,"WsDecode Err %v",err)
-		return nil,gnet.Close
+		log.Log(logger.Error, "WsDecode Err %v", err)
+		return nil, gnet.Close
 	}
 	if messages == nil {
-		log.Log(logger.Error,"messages nil")
-		return nil,gnet.None
+		return nil, gnet.None
 	}
 	models := []*SocketMessage{}
 	for _, message := range messages {
 		if message.OpCode == ws.OpText { /// json payload
 			rq := APIGenerated{}
 			if err := json.Unmarshal(message.Payload, &rq); err != nil {
-				log.Log(logger.Error,"json.Unmarshal Error %v", err.Error())
+				log.Log(logger.Error, "json.Unmarshal Error %v", err.Error())
 				continue
 			}
 			soc := &SocketMessage{
-				MsgType:  uint32(rq.Type),
-				MsgGroup: uint32(rq.Group),
-				MSG_ID: []byte{0,1,2,3,4},
-				Payload: message.Payload,
-				TypePayload:PayloadType_JSON,
+				MsgType:     uint32(rq.Type),
+				MsgGroup:    uint32(rq.Group),
+				MSG_ID:      []byte{0, 1, 2, 3, 4},
+				Payload:     message.Payload,
+				TypePayload: PayloadType_JSON,
 			}
 			soc.Conn = c.Context().(*Connection)
 			soc.Fd = c.Fd()
-			models = append(models,soc)
+			models = append(models, soc)
 		} else if message.OpCode == ws.OpBinary { // binary request  payload
 			// Binary Message
 			if _msg := DecodeData(message.Payload, len(message.Payload)); _msg != nil {
 				_msg.Conn = c.Context().(*Connection)
 				_msg.Fd = c.Fd()
 				_msg.TypePayload = PayloadType_BIN
-				models = append(models,_msg)
+				models = append(models, _msg)
 			}
 		}
 	}
-	return models,gnet.None
+	return models, gnet.None
 }
 
 func DecodePacket(log *logger.Logger, c gnet.Conn) []*SocketMessage {
@@ -318,7 +317,7 @@ func (p *SocketMessage) DecodePayloadIfNeed() {
 
 }
 
-func (p *SocketMessage) Encode(encodeType Encryption_Type, pKey []byte,isReceive bool) ([]byte, error) { // sử dụng public key của client để encode Payload
+func (p *SocketMessage) Encode(encodeType Encryption_Type, pKey []byte, isReceive bool) ([]byte, error) { // sử dụng public key của client để encode Payload
 
 	out_buf := []byte{0x82, 0x68, 0x80, 0x65, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0}
 	var msg_id_size = 5
@@ -328,7 +327,6 @@ func (p *SocketMessage) Encode(encodeType Encryption_Type, pKey []byte,isReceive
 	out_buf[7] = byte(p.MsgGroup & 0xFF)
 	/// TYPE
 	out_buf[8] = byte(p.MsgType & 0xFF)
-
 
 	/// FLAG MSG ID
 	if len(p.MSG_ID) != 0 { // no id
