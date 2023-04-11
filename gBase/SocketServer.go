@@ -335,7 +335,7 @@ func (p *SocketServer) PushMessage(rqPush api.PushReceive_Request) {
 }
 func (p *SocketServer) pushToUser(user_id string, rqPush *api.PushReceive_Request) {
 	/// Lấy danh sách session của 1 user
-	p.LogInfo("pushToUser")
+	p.LogInfo("pushToUser %v", user_id)
 	if _user, ok := p.users.Load(user_id); ok {
 		user_has_session := _user.(sync.Map)
 
@@ -374,7 +374,7 @@ func (p *SocketServer) pushToSession(session_id string, rqPush *api.PushReceive_
 }
 func (p *SocketServer) pushToConnection(connection_id string, rqPush *api.PushReceive_Request) {
 	/// lấy kết nối qua fd(connection_id) và thực hiện đóng gói đẩy msg
-	p.LogInfo("pushToConnection")
+	p.LogInfo("pushToConnection %v", connection_id)
 	p.mu.Lock()
 	if c, ok := p.clients.Load(connection_id); ok {
 		p.mu.Unlock()
