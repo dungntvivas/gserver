@@ -380,7 +380,7 @@ func (p *SocketServer) pushToConnection(connection_id string, rqPush *api.PushRe
 		p.mu.Unlock()
 		connection := (*c.(*gnet.Conn)).Context().(*Connection)
 		if connection.Client.IsAuthen {
-			p.LogInfo("PUSH TO CONNECTION %v of user %v, Connection payload Type %v",connection_id,connection.User_id, connection.Client.payloadType)
+			p.LogInfo("PUSH TO CONNECTION %v of user %v, Connection payload Type %v", connection_id, connection.User_id, connection.Client.PayloadTypeString())
 			if p.Config.Protocol == RequestProtocol_WS {
 				if connection.Client.payloadType == PayloadType_JSON {
 					wsutil.WriteServerMessage((*c.(*gnet.Conn)), ws.OpText, rqPush.ReceiveJson)

@@ -29,15 +29,25 @@ type ClientConnection struct {
 	Platfrom          int32
 	IsSetupConnection bool
 
-	Fd       int  // id của kết nối đối với os ( udp không xác định được fd) == connection ID
-	IsAuthen bool // kết nối này đã được xác thực hay chưa
+	Fd          int  // id của kết nối đối với os ( udp không xác định được fd) == connection ID
+	IsAuthen    bool // kết nối này đã được xác thực hay chưa
 	payloadType PayloadType
 }
-func (p *ClientConnection)isOK() bool{
+
+func (p *ClientConnection) isOK() bool {
 	return p.IsAuthen && p.IsSetupConnection
 }
-
-
+func (p *ClientConnection) PayloadTypeString() string {
+	if p.payloadType == PayloadType_BIN {
+		return "Binary"
+	} else if p.payloadType == PayloadType_JSON {
+		return "JSON"
+	} else if p.payloadType == PayloadType_PROTO {
+		return "Protobuf"
+	} else {
+		return "None"
+	}
+}
 
 type ServerConnection struct {
 	DecType           Encryption_Type
@@ -60,7 +70,8 @@ type Connection struct {
 	buf      bytes.Buffer // 从实际socket中读取到的数据缓存
 	wsMsgBuf wsMessageBuf // ws 消息缓存
 }
-func (c *Connection)isOK() bool {
+
+func (c *Connection) isOK() bool {
 	return len(c.Session_id) != 0 && c.Client.isOK()
 }
 
