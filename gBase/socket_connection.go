@@ -36,6 +36,9 @@ type ClientConnection struct {
 func (p *ClientConnection)isOK() bool{
 	return p.IsAuthen && p.IsSetupConnection
 }
+
+
+
 type ServerConnection struct {
 	DecType           Encryption_Type
 	PKey              []byte
