@@ -18,6 +18,7 @@ const (
 	RequestProtocol_UDS    RequestProtocol = 0x80 // Unix Domain Socket ( linux , macos ) only
 	RequestProtocol_NONE   RequestProtocol = 0x0
 )
+
 func (s RequestProtocol) String() string {
 	if s == RequestProtocol_HTTP {
 		return "HTTP"
@@ -27,15 +28,14 @@ func (s RequestProtocol) String() string {
 		return "TCP"
 	} else if s == RequestProtocol_WS {
 		return "WS"
-	}else if s == RequestProtocol_UDP {
+	} else if s == RequestProtocol_UDP {
 		return "UDP"
-	}else if s == RequestProtocol_UDS {
+	} else if s == RequestProtocol_UDS {
 		return "UDS"
 	} else {
 		return "Unknown"
 	}
 }
-
 
 type PayloadType uint8
 
@@ -57,9 +57,11 @@ type Payload struct {
 	Request *api.Request
 	//
 	Connection_id string
+	IsAuth        bool   /// người dùng này đã authen mark connection với 1 tài khoản nào hay chưa
+	Session_id    string // sesion_id mark với tài khoản
+	User_id       string // id của người dùng khi đã authen
 }
 type PayloadPush struct {
-
 }
 
 type Encryption_Type uint8
@@ -85,14 +87,15 @@ func (s Encryption_Type) String() string {
 	}
 }
 
-
 type Push_Type uint8
+
 const (
-	Push_Type_ALL  Push_Type = 0
-	Push_Type_USER  Push_Type = 1
-	Push_Type_SESSION  Push_Type = 2
+	Push_Type_ALL        Push_Type = 0
+	Push_Type_USER       Push_Type = 1
+	Push_Type_SESSION    Push_Type = 2
 	Push_Type_CONNECTION Push_Type = 3
 )
+
 func (s Push_Type) Push_Type_to_proto_type() api.PushReceive_PUSH_TYPE {
 	if s == Push_Type_ALL {
 		return api.PushReceive_TO_ALL
@@ -115,7 +118,7 @@ type ConfigOption struct {
 	ServerName string
 	Protocol   RequestProtocol
 	EncodeType Encryption_Type
-	GW 		   []string
+	GW         []string
 }
 
 var DefaultHttpConfigOption = ConfigOption{
@@ -126,9 +129,9 @@ var DefaultHttpConfigOption = ConfigOption{
 	EncodeType: Encryption_NONE,
 }
 var DefaultHttpsConfigOption = ConfigOption{
-	Addr:       ":44422",
-	Tls:        TLS{
-		IsTLS: true,
+	Addr: ":44422",
+	Tls: TLS{
+		IsTLS:     true,
 		H2_Enable: false,
 	},
 	Protocol:   RequestProtocol_HTTP,
@@ -136,9 +139,9 @@ var DefaultHttpsConfigOption = ConfigOption{
 	EncodeType: Encryption_NONE,
 }
 var DefaultHttp2ConfigOption = ConfigOption{
-	Addr:       ":44322",
-	Tls:        TLS{
-		IsTLS: true,
+	Addr: ":44322",
+	Tls: TLS{
+		IsTLS:     true,
 		H2_Enable: true,
 	},
 	Protocol:   RequestProtocol_HTTP,
@@ -146,8 +149,8 @@ var DefaultHttp2ConfigOption = ConfigOption{
 	EncodeType: Encryption_NONE,
 }
 var DefaultHttp3QUICConfigOption = ConfigOption{
-	Addr:       ":44322",
-	Tls:        TLS{
+	Addr: ":44322",
+	Tls: TLS{
 		IsTLS: true,
 	},
 	Protocol:   RequestProtocol_HTTP,
@@ -190,15 +193,11 @@ var DefaultUdsSocketConfigOption = ConfigOption{
 	EncodeType: Encryption_NONE,
 }
 
-
-
 type GServer struct {
 	Config *ConfigOption
 	//out
 	ChReceiveRequest chan *Payload
 }
-
-
 
 func (p *GServer) Close() {
 

@@ -273,7 +273,14 @@ func (p *SocketServer) onReceiveRequest(msg *SocketMessage) {
 	rq.Protocol = uint32(p.Config.Protocol)
 	rq.Session = &api.Session{SessionId: msg.Conn.Session_id}
 	result := make(chan *api.Reply)
-	p.HandlerRequest(&Payload{Request: &rq, ChReply: result, Connection_id: fmt.Sprintf("%s_%d", p.Config.Protocol.String(), msg.Fd)})
+	_payload := Payload{Request: &rq, ChReply: result, Connection_id: fmt.Sprintf("%s_%d", p.Config.Protocol.String(), msg.Fd)}
+	if msg.Conn.isOK() {
+		_payload.IsAuth = true
+		_payload.Session_id = msg.Conn.Session_id
+		_payload.User_id = msg.Conn.User_id
+	}
+
+	p.HandlerRequest(&_payload)
 	res := *<-result
 	res.Type = rq.Type
 	res.Group = rq.Group
@@ -374,7 +381,6 @@ func (p *SocketServer) pushToSession(session_id string, rqPush *api.PushReceive_
 }
 func (p *SocketServer) pushToConnection(connection_id string, rqPush *api.PushReceive_Request) {
 	/// lấy kết nối qua fd(connection_id) và thực hiện đóng gói đẩy msg
-	p.LogInfo("pushToConnection %v", connection_id)
 	p.mu.Lock()
 	if c, ok := p.clients.Load(connection_id); ok {
 		p.mu.Unlock()
