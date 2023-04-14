@@ -81,14 +81,14 @@ func (p *SocketServer) Serve() {
 	}
 }
 func (p *SocketServer) OnBoot(eng gnet.Engine) gnet.Action {
-	p.LogInfo("Listener opened on %s", p.Config.Addr)
+	p.LogDebug("Listener opened on %s", p.Config.Addr)
 	return gnet.None
 }
 func (p *SocketServer) OnShutdown(eng gnet.Engine) {
 
 }
 func (p *SocketServer) OnOpen(c gnet.Conn) (out []byte, action gnet.Action) {
-	p.LogInfo("conn [%v] Open Connection", c.Fd())
+	p.LogDebug("conn [%v] Open Connection", c.Fd())
 	// build msg  hello send to client
 
 	newConn := NewConnection(&ServerConnection{
@@ -109,7 +109,7 @@ func (p *SocketServer) OnOpen(c gnet.Conn) (out []byte, action gnet.Action) {
 	return
 }
 func (p *SocketServer) OnClose(c gnet.Conn, err error) (action gnet.Action) {
-	p.LogInfo("conn [%v] Close", c.Fd())
+	p.LogDebug("conn [%v] Close", c.Fd())
 	p.mu.Lock()
 	if conn, ok := p.clients.Load(fmt.Sprintf("%s_%d", p.Config.Protocol.String(), c.Fd())); ok {
 		/// remove fd has connection
@@ -135,7 +135,7 @@ func (p *SocketServer) OnClose(c gnet.Conn, err error) (action gnet.Action) {
 	return gnet.Close
 }
 func (p *SocketServer) MarkConnectioIsAuthen(token string, user_id string, fd string, payload_type PayloadType) {
-	p.LogInfo("Mark Connection %v - %v - %v", fd, token, user_id)
+	p.LogDebug("Mark Connection %v - %v - %v", fd, token, user_id)
 	go func() {
 		// đánh dấu connection id thuộc session nào
 		p.mu.Lock()
@@ -304,7 +304,7 @@ func (p *SocketServer) onReceiveRequest(msg *SocketMessage) {
 }
 func (p *SocketServer) PushMessage(rqPush api.PushReceive_Request) {
 	if rqPush.PushType == api.PushReceive_TO_ALL {
-		p.LogInfo("PUSH ALL USER")
+		p.LogDebug("PUSH ALL USER")
 		/// push all user
 		p.users.Range(func(key, value any) bool {
 			if rqPush.Ignore_Type == api.PushReceive_TO_USER {
@@ -321,19 +321,19 @@ func (p *SocketServer) PushMessage(rqPush api.PushReceive_Request) {
 		})
 	} else if rqPush.PushType == api.PushReceive_TO_USER {
 		/// push to user
-		p.LogInfo("PUSH TO USER")
+		p.LogDebug("PUSH TO USER")
 		for _, s := range rqPush.Receiver {
 			p.pushToUser(s, &rqPush)
 		}
 	} else if rqPush.PushType == api.PushReceive_TO_SESSION {
 		/// push to session
-		p.LogInfo("PUSH TO SESSION")
+		p.LogDebug("PUSH TO SESSION")
 		for _, s := range rqPush.Receiver {
 			p.pushToSession(s, &rqPush)
 		}
 	} else {
 		/// push to connection
-		p.LogInfo("PUSH TO CONNECTION")
+		p.LogDebug("PUSH TO CONNECTION")
 		for _, s := range rqPush.Receiver {
 			p.pushToConnection(s, &rqPush)
 		}
@@ -342,7 +342,7 @@ func (p *SocketServer) PushMessage(rqPush api.PushReceive_Request) {
 }
 func (p *SocketServer) pushToUser(user_id string, rqPush *api.PushReceive_Request) {
 	/// Lấy danh sách session của 1 user
-	p.LogInfo("pushToUser %v", user_id)
+	p.LogDebug("pushToUser %v", user_id)
 	if _user, ok := p.users.Load(user_id); ok {
 		user_has_session := _user.(sync.Map)
 
@@ -361,7 +361,7 @@ func (p *SocketServer) pushToUser(user_id string, rqPush *api.PushReceive_Reques
 }
 func (p *SocketServer) pushToSession(session_id string, rqPush *api.PushReceive_Request) {
 	/// Lấy danh sách connection của 1 session
-	p.LogInfo("pushToSession %v", session_id)
+	p.LogDebug("pushToSession %v", session_id)
 	if connections_map, ok := p.sessions.Load(session_id); ok {
 		session_has_connection := connections_map.(sync.Map)
 		session_has_connection.Range(func(key, value any) bool {
@@ -386,7 +386,7 @@ func (p *SocketServer) pushToConnection(connection_id string, rqPush *api.PushRe
 		p.mu.Unlock()
 		connection := (*c.(*gnet.Conn)).Context().(*Connection)
 		if connection.Client.IsAuthen {
-			p.LogInfo("PUSH TO CONNECTION %v of user %v, Connection payload Type %v", connection_id, connection.User_id, connection.Client.PayloadTypeString())
+			p.LogDebug("PUSH TO CONNECTION %v of user %v, Connection payload Type %v", connection_id, connection.User_id, connection.Client.PayloadTypeString())
 			if p.Config.Protocol == RequestProtocol_WS {
 				if connection.Client.payloadType == PayloadType_JSON {
 					wsutil.WriteServerMessage((*c.(*gnet.Conn)), ws.OpText, rqPush.ReceiveJson)
@@ -441,7 +441,7 @@ func (p *SocketServer) onSetupConnection(msg *SocketMessage) {
 		msg.Conn.Client.IsSetupConnection = true
 		msg.Conn.Client.PKey = hlRequest.PKey
 		msg.Conn.Client.EncType = Encryption_Type(hlRequest.EncodeType)
-		p.LogInfo("Client %d Setup encode type %s", msg.Conn.Client.Fd, msg.Conn.Client.EncType.String())
+		p.LogDebug("Client %d Setup encode type %s", msg.Conn.Client.Fd, msg.Conn.Client.EncType.String())
 		msg.Conn.Client.Platfrom = int32(hlRequest.Platform)
 		msg.Conn.Connection_id = []byte(fmt.Sprintf("%d", msg.Fd))
 	}
@@ -485,7 +485,7 @@ func (p *SocketServer) onSetupConnection(msg *SocketMessage) {
 	}
 }
 func (p *SocketServer) onClientKeepAlive(msg *SocketMessage) {
-	p.LogInfo("Receive KeepAlive Request from connection id %d", msg.Conn.Client.Fd)
+	p.LogDebug("Receive KeepAlive Request from connection id %d", msg.Conn.Client.Fd)
 	hlRequest := api.KeepAlive_Request{}
 	status := uint32(api.ResultType_OK)
 	if err := msg.ToRequestProtoModel(&hlRequest); err != nil {

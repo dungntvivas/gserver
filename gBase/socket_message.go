@@ -37,6 +37,7 @@ import (
 // * 2  bit type cua encode
 // * 11 bit size cua rsa data ( nếu type = rsa encode )
 // * 1  bit nếu có id 8 byte phía sau thì bit 15 được set = 1
+// * 1  bit nếu là receive message thì bit này được set = 1
 
 // Nếu được encode Payload bằng RSA
 // tiếu chuẩn sử dụng RSA_PKCS1_2048
