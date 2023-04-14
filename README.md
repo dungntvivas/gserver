@@ -1,17 +1,23 @@
 # GServer 
 
-là project được xây dựng trên ngôn ngữ go , Template khung để dựng dự án microservice cung cấp những công cụ cần thiết để tạo một máy chủ phục vụ 
+là project được xây dựng trên ngôn ngữ go ,
+là Template khung để dựng dự án microservice cung cấp những công cụ cần thiết để tạo một máy chủ đa mục đích
+và một template thống nhất để handler request , push trên một code duy nhất mà hỗ trợ tất cả loại kết nối phổ biến
+
 
 ## Overview
 
-- [x] Hỗ trợ tạo dựng máy chủ GRPC
+- [x] Hỗ trợ tạo dựng máy chủ GRPC 
 - [x] Hỗ trợ tạo dựng máy chủ HTTP/HTTPS ( payload json (application/json) hoặc bin protobuf (application/octet-stream) )
 - [x] Hỗ trợ tạo dựng máy chủ HTTP/2 ( payload json (application/json) hoặc bin protobuf (application/octet-stream) )
-- [ ] Hỗ trợ tạo dựng máy chủ QUIC
+- [ ] Hỗ trợ tạo dựng máy chủ QUIC/3
 - [x] Hỗ trợ tạo dựng máy chủ TCP
+- [ ] Hỗ trợ tạo dựng máy chủ TLS
 - [x] Hỗ trợ tạo dựng máy chủ WS (payload json (opCode=text) hoặc bin protobuf (opCode = binary) )
+- [x] Hỗ trợ tạo dựng máy chủ WSS 
 - [x] Hỗ trợ tạo dựng máy chủ UDS
-- [ ] Hỗ trợ tạo dựng máy chủ UDP 
+- [x] Hỗ trợ tạo dựng máy chủ UDP 
+- [ ] Hỗ trợ tạo dựng máy chủ DTLS
 
 ## Ví dụ để khởi tạo một máy chủ microservice grpc 
 
@@ -81,8 +87,8 @@ func main()  {
 	_logger, _ := logger.New(logger.Info, logger.LogDestinations{logger.DestinationFile: {}, logger.DestinationStdout: {}}, "/tmp/server.log")
 	cf := gBase.DefaultHttp2ConfigOption
 	cf.Logger = _logger
-	cf.Tls.Cert = "certificate.pem"
-	cf.Tls.Key = "/private.key"
+	cf.Tls.Cert = "./certificate.pem"
+	cf.Tls.Key = "./private.key"
 	cf.Done = &done
 	hsv2 := gHTTP.New(cf,chReceiveRequest)
 	hsv2.Serve()
