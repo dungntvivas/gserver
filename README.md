@@ -8,6 +8,7 @@ và một template thống nhất để handler request , push trên một code 
 ## Overview
 
 - [x] Hỗ trợ tạo dựng máy chủ GRPC 
+- [x] Hỗ trợ GRPC Client 
 - [x] Hỗ trợ tạo dựng máy chủ HTTP/HTTPS ( payload json (application/json) hoặc bin protobuf (application/octet-stream) )
 - [x] Hỗ trợ tạo dựng máy chủ HTTP/2 ( payload json (application/json) hoặc bin protobuf (application/octet-stream) )
 - [ ] Hỗ trợ tạo dựng máy chủ QUIC/3
