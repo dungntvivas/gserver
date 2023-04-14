@@ -79,7 +79,7 @@ func main()  {
     done := make(chan struct{})
 	chReceiveRequest := make(chan *gBase.Payload)
 	_logger, _ := logger.New(logger.Info, logger.LogDestinations{logger.DestinationFile: {}, logger.DestinationStdout: {}}, "/tmp/server.log")
-	cf := gBase.DefaultHttpsConfigOption
+	cf := gBase.DefaultHttp2ConfigOption
 	cf.Logger = _logger
 	cf.Tls.Cert = "certificate.pem"
 	cf.Tls.Key = "/private.key"

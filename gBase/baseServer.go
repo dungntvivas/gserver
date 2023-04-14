@@ -154,7 +154,7 @@ var DefaultHttp3QUICConfigOption = ConfigOption{
 		IsTLS: true,
 	},
 	Protocol:   RequestProtocol_HTTP,
-	ServerName: "HTTP",
+	ServerName: "QUIC",
 	EncodeType: Encryption_NONE,
 }
 var DefaultGrpcConfigOption = ConfigOption{
