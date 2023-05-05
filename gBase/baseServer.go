@@ -16,6 +16,7 @@ const (
 	RequestProtocol_WS     RequestProtocol = 0x20
 	RequestProtocol_UDP    RequestProtocol = 0x40
 	RequestProtocol_UDS    RequestProtocol = 0x80 // Unix Domain Socket ( linux , macos ) only
+	RequestProtocol_QUIC   RequestProtocol = 0x81
 	RequestProtocol_NONE   RequestProtocol = 0x0
 )
 
@@ -32,6 +33,8 @@ func (s RequestProtocol) String() string {
 		return "UDP"
 	} else if s == RequestProtocol_UDS {
 		return "UDS"
+	} else if s == RequestProtocol_QUIC {
+		return "QUIC"
 	} else {
 		return "Unknown"
 	}
@@ -153,7 +156,7 @@ var DefaultHttp3QUICConfigOption = ConfigOption{
 	Tls: TLS{
 		IsTLS: true,
 	},
-	Protocol:   RequestProtocol_HTTP,
+	Protocol:   RequestProtocol_QUIC,
 	ServerName: "QUIC",
 	EncodeType: Encryption_NONE,
 }
