@@ -247,6 +247,10 @@ func (p *SocketServer) onReceiveRequest(msg *SocketMessage) {
 			p.LogError("Connection %d - isAuthen %v -- group %v -- type %v", msg.Fd, msg.Conn.Client.IsAuthen, msg.MsgGroup, msg.MsgType)
 			_re := NewReply(uint32(api.ResultType_REQUEST_INVALID))
 			_re.Msg = "REQUEST_INVALID"
+			if !msg.Conn.Client.IsAuthen { // client chưa xác thực kết nối
+				_re = NewReply(uint32(api.ResultType_SESSION_INVALID))
+				_re.Msg = "SESSION_INVALID"
+			}
 			if _buf, err := GetReplyBuffer(msg.MsgType, msg.MsgGroup, msg.MSG_ID, _re, Encryption_NONE, nil); err == nil {
 				if c, o := p.clients.Load(fmt.Sprintf("%s_%d", p.Config.Protocol.String(), msg.Fd)); o {
 					if p.Config.Protocol == RequestProtocol_WS {
