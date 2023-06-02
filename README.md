@@ -13,12 +13,12 @@ và một template thống nhất để handler request , push trên một code 
 - [x] Hỗ trợ tạo dựng máy chủ HTTP/2 ( payload json (application/json) hoặc bin protobuf (application/octet-stream) )
 - [ ] Hỗ trợ tạo dựng máy chủ QUIC/3
 - [x] Hỗ trợ tạo dựng máy chủ TCP
-- [ ] Hỗ trợ tạo dựng máy chủ TLS
+- [ ] Hỗ trợ tạo dựng máy chủ TLS => inprogress
 - [x] Hỗ trợ tạo dựng máy chủ WS (payload json (opCode=text) hoặc bin protobuf (opCode = binary) )
 - [x] Hỗ trợ tạo dựng máy chủ WSS 
 - [x] Hỗ trợ tạo dựng máy chủ UDS
 - [x] Hỗ trợ tạo dựng máy chủ UDP 
-- [ ] Hỗ trợ tạo dựng máy chủ DTLS
+- [ ] Hỗ trợ tạo dựng máy chủ DTLS => inprogress
 
 ## Ví dụ để khởi tạo một máy chủ microservice grpc 
 
