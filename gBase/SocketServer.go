@@ -142,7 +142,7 @@ func (p *SocketServer) MarkConnectioIsAuthen(token string, user_id string, fd st
 		if c, ok := p.clients.Load(fd); ok {
 			(*c.(*gnet.Conn)).Context().(*Connection).Client.IsAuthen = true
 			(*c.(*gnet.Conn)).Context().(*Connection).Client.IsSetupConnection = true
-			(*c.(*gnet.Conn)).Context().(*Connection).Client.payloadType = payload_type
+			(*c.(*gnet.Conn)).Context().(*Connection).Client.PayloadType = payload_type
 			(*c.(*gnet.Conn)).Context().(*Connection).Session_id = token
 			(*c.(*gnet.Conn)).Context().(*Connection).User_id = user_id
 		}
@@ -390,7 +390,7 @@ func (p *SocketServer) pushToConnection(connection_id string, rqPush *api.PushRe
 		if connection.Client.IsAuthen {
 			p.LogDebug("PUSH TO CONNECTION %v of user %v, Connection payload Type %v", connection_id, connection.User_id, connection.Client.PayloadTypeString())
 			if p.Config.Protocol == RequestProtocol_WS {
-				if connection.Client.payloadType == PayloadType_JSON {
+				if connection.Client.PayloadType == PayloadType_JSON {
 					wsutil.WriteServerMessage((*c.(*gnet.Conn)), ws.OpText, rqPush.ReceiveJson)
 				} else {
 					/// CONVERT TO SOCKET PAYLOAD ////
@@ -409,7 +409,6 @@ func (p *SocketServer) pushToConnection(connection_id string, rqPush *api.PushRe
 	} else {
 		p.mu.Unlock()
 	}
-
 }
 func (p *SocketServer) onSetupConnection(msg *SocketMessage) {
 	hlRequest := api.Hello_Request{}

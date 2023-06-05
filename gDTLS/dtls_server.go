@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/panjf2000/gnet/v2"
 	"github.com/pion/dtls/v2"
 	"gitlab.vivas.vn/go/grpc_api/api"
 	"gitlab.vivas.vn/go/gserver/gBase"
@@ -209,7 +210,10 @@ func (p *DTLSServer)receiveMsg(){
 					}
 					if _buf, err := gBase.GetReplyBuffer(msg.MsgType, msg.MsgGroup, msg.MSG_ID, &res, msg.Conn.Client.EncType, msg.Conn.Client.PKey); err == nil {
 						if c, o := p.clients.Load(fmt.Sprintf("%s_%d", p.Config.Protocol.String(), msg.Fd)); o {
-							(*c.(*net.Conn)).Write(_buf)
+							conn := c.(*gBase.Connection)
+							(*conn.Client).Lock.RLock()
+							defer (*conn.Client).Lock.RUnlock()
+							(*conn.Client.Conn).Write(_buf)
 						}
 					}
 				}
@@ -312,8 +316,53 @@ func (p *DTLSServer) Close() {
 
 }
 
-func (p *DTLSServer) MarkConnectioIsAuthen(token string, user_id string, fd string, payload_type gBase.PayloadType) {
-	p.LogDebug("Mark Connection %v - %v - %v", fd, token, user_id)
+func (p *DTLSServer) MarkConnectioIsAuthen(token string, user_id string, client_id string, payload_type gBase.PayloadType) {
+	p.LogDebug("Mark Connection %v - %v - %v", client_id, token, user_id)
+	go func() {
+		// đánh dấu connection id thuộc session nào
+		p.mu.Lock()
+		if c, ok := p.clients.Load(client_id); ok {
+			conn := c.(*gBase.Connection)
+			conn.Client.IsAuthen = true
+			conn.Client.IsSetupConnection = true
+			conn.Client.PayloadType = payload_type
+			conn.Session_id = token
+			conn.User_id = user_id
+		}
+		p.mu.Unlock()
+	}()
+
+	go func() {
+		// đánh dấu session/token có những kết nối nào ( vì 1 session có thể được sử dụng nhiều connection cùng lúc trường hợp mở nhiều tab trên trình duyệt)
+		// session has connection
+		p.mu_token.Lock()
+		if _s, ok := p.sessions.Load(token); ok {
+			cur_slice := _s.(sync.Map)
+			cur_slice.Store(client_id, client_id)
+			p.sessions.Store(token, cur_slice)
+		} else {
+			new_ses := sync.Map{}
+			new_ses.Store(client_id, client_id)
+			p.sessions.Store(token, new_ses)
+		}
+		p.mu_token.Unlock()
+	}()
+
+	go func() {
+		// đánh dấu lại user có những session nào đang login ( ví 1 user có thể login trên nhiều thiết bị tạo ra nhiều session đồng thời)
+		// user has connection
+		p.mu_user.Lock()
+		if _s, ok := p.users.Load(user_id); ok {
+			cur_slice := _s.(sync.Map)
+			cur_slice.Store(token, token)
+			p.users.Store(user_id, cur_slice)
+		} else {
+			new_user_has_session := sync.Map{}
+			new_user_has_session.Store(token, token)
+			p.users.Store(user_id, new_user_has_session)
+		}
+		p.mu_user.Unlock()
+	}()
 }
 
 func (p *DTLSServer) SendHelloMsg(conn *gBase.Connection) {
@@ -336,4 +385,99 @@ func (p *DTLSServer) SendHelloMsg(conn *gBase.Connection) {
 	(*conn.Client).Lock.RLock()
 	defer (*conn.Client).Lock.RUnlock()
 	(*conn.Client.Conn).Write(out)
+}
+
+func (p *DTLSServer) PushMessage(rqPush api.PushReceive_Request) {
+	if rqPush.PushType == api.PushReceive_TO_ALL {
+		p.LogDebug("PUSH ALL USER")
+		/// push all user
+		p.users.Range(func(key, value any) bool {
+			if rqPush.Ignore_Type == api.PushReceive_TO_USER {
+				/// check bỏ qua ko push
+				if key.(string) != rqPush.IgnoreReceiver {
+					p.pushToUser(key.(string), &rqPush)
+				} else {
+					p.LogInfo("ignore_receiver %v", rqPush.IgnoreReceiver)
+				}
+			} else {
+				p.pushToUser(key.(string), &rqPush)
+			}
+			return true
+		})
+	} else if rqPush.PushType == api.PushReceive_TO_USER {
+		/// push to user
+		p.LogDebug("PUSH TO USER")
+		for _, s := range rqPush.Receiver {
+			p.pushToUser(s, &rqPush)
+		}
+	} else if rqPush.PushType == api.PushReceive_TO_SESSION {
+		/// push to session
+		p.LogDebug("PUSH TO SESSION")
+		for _, s := range rqPush.Receiver {
+			p.pushToSession(s, &rqPush)
+		}
+	} else {
+		/// push to connection
+		p.LogDebug("PUSH TO CONNECTION")
+		for _, s := range rqPush.Receiver {
+			p.pushToConnection(s, &rqPush)
+		}
+	}
+	//MARK PUSH TO OTHER GATEWAY
+}
+func (p *DTLSServer) pushToUser(user_id string, rqPush *api.PushReceive_Request) {
+	/// Lấy danh sách session của 1 user
+	p.LogDebug("pushToUser %v", user_id)
+	if _user, ok := p.users.Load(user_id); ok {
+		user_has_session := _user.(sync.Map)
+
+		user_has_session.Range(func(key, value any) bool {
+			if rqPush.Ignore_Type == api.PushReceive_TO_SESSION {
+				if key.(string) != rqPush.IgnoreReceiver {
+					p.pushToSession(key.(string), rqPush)
+				}
+			} else {
+				p.pushToSession(key.(string), rqPush)
+			}
+
+			return true
+		})
+	}
+}
+func (p *DTLSServer) pushToSession(session_id string, rqPush *api.PushReceive_Request) {
+	/// Lấy danh sách connection của 1 session
+	p.LogDebug("pushToSession %v", session_id)
+	if connections_map, ok := p.sessions.Load(session_id); ok {
+		session_has_connection := connections_map.(sync.Map)
+		session_has_connection.Range(func(key, value any) bool {
+			if rqPush.Ignore_Type == api.PushReceive_TO_CONNECTION {
+				if key.(string) != rqPush.IgnoreReceiver {
+					p.pushToConnection(key.(string), rqPush)
+				}
+			} else {
+				p.pushToConnection(key.(string), rqPush)
+			}
+			return true
+		})
+	}
+}
+
+func (p *DTLSServer) pushToConnection(connection_id string, rqPush *api.PushReceive_Request) {
+	/// lấy kết nối qua fd(connection_id) và thực hiện đóng gói đẩy msg
+	p.mu.Lock()
+	if c, ok := p.clients.Load(connection_id); ok {
+		p.mu.Unlock()
+		connection := (*c.(*gnet.Conn)).Context().(*gBase.Connection)
+		if connection.Client.IsAuthen {
+			p.LogDebug("PUSH TO CONNECTION %v of user %v, Connection payload Type %v", connection_id, connection.User_id, connection.Client.PayloadTypeString())
+			if _buf, err := gBase.GetReceiveBuffer(rqPush.RcType, rqPush.RcGroup, connection.Client.EncType, connection.Client.PKey, rqPush.Receive); err == nil {
+				conn := c.(*gBase.Connection)
+				(*conn.Client).Lock.RLock()
+				defer (*conn.Client).Lock.RUnlock()
+				(*conn.Client.Conn).Write(_buf)
+			}
+		}
+	} else {
+		p.mu.Unlock()
+	}
 }

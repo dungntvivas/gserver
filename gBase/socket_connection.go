@@ -33,7 +33,7 @@ type ClientConnection struct {
 
 	Fd          int  // id của kết nối đối với os ( udp không xác định được fd nên sử dụng port dest làm fd ) == connection ID
 	IsAuthen    bool // kết nối này đã được xác thực hay chưa
-	payloadType PayloadType
+	PayloadType PayloadType
 
 	Conn *net.Conn // sử dụng cho udp connection
 	Lock  sync.RWMutex // sử dụng cho kết nối loại udp
@@ -43,11 +43,11 @@ func (p *ClientConnection) isOK() bool {
 	return p.IsAuthen && p.IsSetupConnection
 }
 func (p *ClientConnection) PayloadTypeString() string {
-	if p.payloadType == PayloadType_BIN {
+	if p.PayloadType == PayloadType_BIN {
 		return "Binary"
-	} else if p.payloadType == PayloadType_JSON {
+	} else if p.PayloadType == PayloadType_JSON {
 		return "JSON"
-	} else if p.payloadType == PayloadType_PROTO {
+	} else if p.PayloadType == PayloadType_PROTO {
 		return "Protobuf"
 	} else {
 		return "None"
