@@ -67,9 +67,9 @@ func NewSocket(config ConfigOption, chReceiveRequest chan *Payload) SocketServer
 }
 func (p *SocketServer) Serve() {
 	protocol := "tcp"
-	if p.Config.Protocol == RequestProtocol_TCP || p.Config.Protocol == RequestProtocol_WS {
+	if p.Config.Protocol == RequestProtocol_TCP || p.Config.Protocol == RequestProtocol_WS  {
 		protocol = "tcp://"
-	} else if p.Config.Protocol == RequestProtocol_UDP {
+	} else if p.Config.Protocol == RequestProtocol_UDP || p.Config.Protocol == RequestProtocol_DTLS{
 		protocol = "udp://"
 	} else if p.Config.Protocol == RequestProtocol_UDS {
 		protocol = "unix://"
@@ -214,7 +214,6 @@ func (p *SocketServer) OnTraffic(c gnet.Conn) gnet.Action {
 			p.chReceiveMsg <- msgs[i]
 		}
 		return gnet.None
-
 	}
 }
 func (p *SocketServer) receiveMessage() {
@@ -243,7 +242,7 @@ func (p *SocketServer) onReceiveRequest(msg *SocketMessage) {
 	}
 	if msg.MsgGroup != uint32(api.AUTHEN_GROUP_AUTHEN_GROUP_ID) {
 		// check authen
-		if !msg.Conn.isOK() {
+		if !msg.Conn.IsOK() {
 			p.LogError("Connection %d - isAuthen %v -- group %v -- type %v", msg.Fd, msg.Conn.Client.IsAuthen, msg.MsgGroup, msg.MsgType)
 			_re := NewReply(uint32(api.ResultType_REQUEST_INVALID))
 			_re.Msg = "REQUEST_INVALID"
@@ -278,7 +277,7 @@ func (p *SocketServer) onReceiveRequest(msg *SocketMessage) {
 	rq.Session = &api.Session{SessionId: msg.Conn.Session_id}
 	result := make(chan *api.Reply)
 	_payload := Payload{Request: &rq, ChReply: result, Connection_id: fmt.Sprintf("%s_%d", p.Config.Protocol.String(), msg.Fd)}
-	if msg.Conn.isOK() {
+	if msg.Conn.IsOK() {
 		_payload.IsAuth = true
 		_payload.Session_id = msg.Conn.Session_id
 		_payload.User_id = msg.Conn.User_id
@@ -290,7 +289,6 @@ func (p *SocketServer) onReceiveRequest(msg *SocketMessage) {
 	res.Group = rq.Group
 	if res.Status != 0 {
 		res.Msg = api.ResultType(res.Status).String()
-
 	}
 	if _buf, err := GetReplyBuffer(msg.MsgType, msg.MsgGroup, msg.MSG_ID, &res, msg.Conn.Client.EncType, msg.Conn.Client.PKey); err == nil {
 		if c, o := p.clients.Load(fmt.Sprintf("%s_%d", p.Config.Protocol.String(), msg.Fd)); o {

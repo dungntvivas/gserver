@@ -10,7 +10,7 @@ type RequestProtocol uint8
 
 const (
 	RequestProtocol_HTTP   RequestProtocol = 0x2
-	RequestProtocol_SOCKET RequestProtocol = 0x4
+	RequestProtocol_TLS RequestProtocol = 0x4
 	RequestProtocol_GRPC   RequestProtocol = 0x8
 	RequestProtocol_TCP    RequestProtocol = 0x10
 	RequestProtocol_WS     RequestProtocol = 0x20
@@ -26,7 +26,7 @@ func (s RequestProtocol) String() string {
 		return "HTTP"
 	} else if s == RequestProtocol_GRPC {
 		return "GRPC"
-	} else if s == RequestProtocol_TCP {
+	} else if s == RequestProtocol_TCP || s == RequestProtocol_TLS {
 		return "TCP"
 	} else if s == RequestProtocol_WS {
 		return "WS"
@@ -36,6 +36,8 @@ func (s RequestProtocol) String() string {
 		return "UDS"
 	} else if s == RequestProtocol_QUIC {
 		return "QUIC"
+	} else if s == RequestProtocol_DTLS {
+		return "DTLS"
 	} else {
 		return "Unknown"
 	}

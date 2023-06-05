@@ -13,12 +13,12 @@ và một template thống nhất để handler request , push trên một code 
 - [x] Hỗ trợ tạo dựng máy chủ HTTP/2 ( payload json (application/json) hoặc bin protobuf (application/octet-stream) )
 - [ ] Hỗ trợ tạo dựng máy chủ QUIC/3 => inprogress
 - [x] Hỗ trợ tạo dựng máy chủ TCP
-- [ ] Hỗ trợ tạo dựng máy chủ TLS => inprogress
+- [ ] Hỗ trợ tạo dựng máy chủ TLS (payload ở loại kết nối này đã được mã hóa nên không cần thiết lập mã hóa kết nối) => inprogress
 - [x] Hỗ trợ tạo dựng máy chủ WS (payload json (opCode=text) hoặc bin protobuf (opCode = binary) )
 - [x] Hỗ trợ tạo dựng máy chủ WSS 
-- [x] Hỗ trợ tạo dựng máy chủ UDS
+- [x] Hỗ trợ tạo dựng máy chủ UDS (Unix domain socket)
 - [x] Hỗ trợ tạo dựng máy chủ UDP 
-- [ ] Hỗ trợ tạo dựng máy chủ DTLS => inprogress
+- [x] Hỗ trợ tạo dựng máy chủ DTLS (pre-shared key = 0x86, 0x73, 0x86, 0x65, 0x83 , CipherSuites = TLS_PSK_WITH_AES_256_CCM_8)
 
 ## Ví dụ để khởi tạo một máy chủ microservice grpc 
 
@@ -93,4 +93,17 @@ func main()  {
 	cf.Done = &done
 	hsv2 := gHTTP.New(cf,chReceiveRequest)
 	hsv2.Serve()
+```
+## Ví dụ để khởi tạo một máy chủ Socket (tcp,udp,ws)
+```go
+    done := make(chan struct{})
+	chReceiveRequest := make(chan *gBase.Payload)
+	_logger, _ := logger.New(logger.Info, logger.LogDestinations{logger.DestinationFile: {}, logger.DestinationStdout: {}}, "/tmp/server.log")
+	cf := gBase.DefaultDTLSSocketConfigOption
+	cf.Logger = _logger
+	cf.Tls.Cert = "./certificate.pem"
+	cf.Tls.Key = "./private.key"
+	cf.Done = &done
+	sv := gDTLS.New(cf,chReceiveRequest)
+    sv.Serve()
 ```

@@ -3,7 +3,6 @@ package gBase
 import (
 	"encoding/json"
 	"fmt"
-
 	"github.com/gobwas/ws"
 
 	"github.com/google/uuid"
@@ -112,12 +111,12 @@ func DecodeData(data []byte, n int) *SocketMessage {
 		return nil
 	}
 	if data[0] != 0x82 || data[1] != 0x68 || data[2] != 0x80 || data[3] != 0x65 { // RDPA
-		fmt.Printf("%v", "Error Header \n")
+		fmt.Printf("%v", "Header data invalid \n")
 		return nil
 	}
 	msgSize := (int(data[4]) << 0x10) + (int(data[5]) << 0x8) + int(data[6])
 	if msgSize > len(data) {
-		fmt.Printf("%v", "Data invalid \n")
+		fmt.Printf("%v", "Data size invalid \n")
 		return nil
 	}
 	lable_size := 0
@@ -198,6 +197,15 @@ func WebsocketDecodePackage(log *logger.Logger, c gnet.Conn) ([]*SocketMessage, 
 		}
 	}
 	return models, gnet.None
+}
+
+func DecodeDTLSPacket(buf []byte)[]*SocketMessage {
+	models := []*SocketMessage{}
+	if _msg := DecodeData(buf, len(buf)); _msg != nil {
+		_msg.TypePayload = PayloadType_BIN
+		models = append(models, _msg)
+	}
+	return models
 }
 
 func DecodePacket(log *logger.Logger, c gnet.Conn) []*SocketMessage {
@@ -311,7 +319,11 @@ func (p *SocketMessage) DecodePayloadIfNeed() {
 			xor_key, _ := p.Conn.Server.Rsa.RSA_PKCS1_Decrypt(p.Lable)
 			p.Payload = xor.EncryptDecrypt(p.Payload, xor_key)
 		} else if p.MSG_encode_decode_type == Encryption_AES {
-			p.Payload, _ = aes.CBCDecrypter(p.Payload, p.Conn.Server.PKey, p.Lable)
+			var err error
+			p.Payload, err = aes.CBCDecrypter(p.Payload, p.Conn.Server.PKey, p.Lable)
+			if err != nil {
+				fmt.Printf("err %v",err.Error())
+			}
 		}
 		p.MSG_encode_decode_type = Encryption_NONE
 	}

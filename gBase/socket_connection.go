@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"net"
+	"sync"
 
 	"github.com/gobwas/ws"
 	"github.com/gobwas/ws/wsutil"
@@ -29,9 +31,12 @@ type ClientConnection struct {
 	Platfrom          int32
 	IsSetupConnection bool
 
-	Fd          int  // id của kết nối đối với os ( udp không xác định được fd) == connection ID
+	Fd          int  // id của kết nối đối với os ( udp không xác định được fd nên sử dụng port dest làm fd ) == connection ID
 	IsAuthen    bool // kết nối này đã được xác thực hay chưa
 	payloadType PayloadType
+
+	Conn *net.Conn // sử dụng cho udp connection
+	Lock  sync.RWMutex // sử dụng cho kết nối loại udp
 }
 
 func (p *ClientConnection) isOK() bool {
@@ -71,7 +76,7 @@ type Connection struct {
 	wsMsgBuf wsMessageBuf // ws 消息缓存
 }
 
-func (c *Connection) isOK() bool {
+func (c *Connection) IsOK() bool {
 	return len(c.Session_id) != 0 && c.Client.isOK()
 }
 
