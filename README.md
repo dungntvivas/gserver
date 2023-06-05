@@ -11,7 +11,7 @@ và một template thống nhất để handler request , push trên một code 
 - [x] Hỗ trợ GRPC Client 
 - [x] Hỗ trợ tạo dựng máy chủ HTTP/HTTPS ( payload json (application/json) hoặc bin protobuf (application/octet-stream) )
 - [x] Hỗ trợ tạo dựng máy chủ HTTP/2 ( payload json (application/json) hoặc bin protobuf (application/octet-stream) )
-- [ ] Hỗ trợ tạo dựng máy chủ QUIC/3
+- [ ] Hỗ trợ tạo dựng máy chủ QUIC/3 => inprogress
 - [x] Hỗ trợ tạo dựng máy chủ TCP
 - [ ] Hỗ trợ tạo dựng máy chủ TLS => inprogress
 - [x] Hỗ trợ tạo dựng máy chủ WS (payload json (opCode=text) hoặc bin protobuf (opCode = binary) )

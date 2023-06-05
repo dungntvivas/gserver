@@ -8,10 +8,11 @@ require (
 	github.com/golang/protobuf v1.5.2
 	github.com/google/uuid v1.3.0
 	github.com/panjf2000/gnet/v2 v2.1.2
+	github.com/pion/dtls/v2 v2.2.7
 	github.com/quic-go/quic-go v0.34.0
 	gitlab.vivas.vn/go/grpc_api v0.9.27
 	gitlab.vivas.vn/go/internal v0.9.6
-	golang.org/x/net v0.7.0
+	golang.org/x/net v0.9.0
 	google.golang.org/grpc v1.52.0
 	google.golang.org/protobuf v1.28.1
 
@@ -36,6 +37,8 @@ require (
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/onsi/ginkgo/v2 v2.2.0 // indirect
 	github.com/pelletier/go-toml/v2 v2.0.1 // indirect
+	github.com/pion/logging v0.2.2 // indirect
+	github.com/pion/transport/v2 v2.2.1 // indirect
 	github.com/quic-go/qtls-go1-19 v0.3.2 // indirect
 	github.com/quic-go/qtls-go1-20 v0.2.2 // indirect
 	github.com/ugorji/go/codec v1.2.7 // indirect
@@ -43,12 +46,12 @@ require (
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.7.0 // indirect
 	go.uber.org/zap v1.21.0 // indirect
-	golang.org/x/crypto v0.4.0 // indirect
+	golang.org/x/crypto v0.8.0 // indirect
 	golang.org/x/exp v0.0.0-20221205204356-47842c84f3db // indirect
-	golang.org/x/mod v0.6.0 // indirect
-	golang.org/x/sys v0.5.0 // indirect
-	golang.org/x/text v0.7.0 // indirect
-	golang.org/x/tools v0.2.0 // indirect
+	golang.org/x/mod v0.8.0 // indirect
+	golang.org/x/sys v0.7.0 // indirect
+	golang.org/x/text v0.9.0 // indirect
+	golang.org/x/tools v0.6.0 // indirect
 	google.golang.org/genproto v0.0.0-20230110181048-76db0878b65f // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect

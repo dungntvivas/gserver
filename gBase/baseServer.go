@@ -17,6 +17,7 @@ const (
 	RequestProtocol_UDP    RequestProtocol = 0x40
 	RequestProtocol_UDS    RequestProtocol = 0x80 // Unix Domain Socket ( linux , macos ) only
 	RequestProtocol_QUIC   RequestProtocol = 0x81
+	RequestProtocol_DTLS   RequestProtocol = 0x82
 	RequestProtocol_NONE   RequestProtocol = 0x0
 )
 
@@ -193,6 +194,13 @@ var DefaultUdsSocketConfigOption = ConfigOption{
 	Tls:        TLS{IsTLS: false},
 	Protocol:   RequestProtocol_UDS,
 	ServerName: "Unix Domain Socket",
+	EncodeType: Encryption_NONE,
+}
+var DefaultDTLSSocketConfigOption = ConfigOption{
+	Addr:       "0.0.0.0:44444",
+	Tls:        TLS{IsTLS: true},
+	Protocol:   RequestProtocol_DTLS,
+	ServerName: "DTLS Socket",
 	EncodeType: Encryption_NONE,
 }
 

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"gitlab.vivas.vn/go/grpc_api/api"
 	"gitlab.vivas.vn/go/gserver/gBase"
+	"gitlab.vivas.vn/go/gserver/gDTLS"
 	"gitlab.vivas.vn/go/gserver/gHTTP"
 	"gitlab.vivas.vn/go/internal/encryption/aes"
 	"gitlab.vivas.vn/go/internal/encryption/rsa"
@@ -29,6 +30,10 @@ func main() {
 	cf.Done = &done
 	hsv := gHTTP.New(cf,chReceiveRequest)
 	hsv.Serve()
+	cf_dtls := gBase.DefaultDTLSSocketConfigOption
+	cf_dtls.Logger = _logger
+	dtls := gDTLS.New(cf_dtls,chReceiveRequest)
+	dtls.Serve()
 
 
 	//
