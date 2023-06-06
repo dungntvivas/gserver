@@ -207,6 +207,14 @@ func DecodeDTLSPacket(buf []byte)[]*SocketMessage {
 	}
 	return models
 }
+func DecodeTLSPacket(buf []byte)[]*SocketMessage {
+	models := []*SocketMessage{}
+	if _msg := DecodeData(buf, len(buf)); _msg != nil {
+		_msg.TypePayload = PayloadType_BIN
+		models = append(models, _msg)
+	}
+	return models
+}
 
 func DecodePacket(log *logger.Logger, c gnet.Conn) []*SocketMessage {
 	header_size := 0x10

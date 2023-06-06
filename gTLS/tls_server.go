@@ -1,29 +1,29 @@
-package gDTLS
+package gTLS
 
 import (
+	"bufio"
 	"bytes"
-	"context"
+	"crypto/rand"
+	"crypto/tls"
 	"fmt"
+	"github.com/panjf2000/gnet/v2"
+	"gitlab.vivas.vn/go/grpc_api/api"
+	"gitlab.vivas.vn/go/gserver/gBase"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/anypb"
 	"net"
 	"runtime"
 	"strconv"
 	"sync"
 	"time"
-
-	"github.com/panjf2000/gnet/v2"
-	"github.com/pion/dtls/v2"
-	"gitlab.vivas.vn/go/grpc_api/api"
-	"gitlab.vivas.vn/go/gserver/gBase"
-	"google.golang.org/protobuf/proto"
-	"google.golang.org/protobuf/types/known/anypb"
 )
 
-type DTLSServer struct {
+type gTLS struct {
 	gBase.GServer
 	isRunning bool
-	ctx       context.Context
-	cancel    context.CancelFunc
-	listener  net.Listener
+	// tls config
+	tls_config *tls.Config
+	tls_ln *net.Listener
 
 	mu      sync.Mutex
 	clients sync.Map // ADDRESS ==> Connection ( 1 connection chứa thông tin kết nối ) client_id has connection
@@ -38,68 +38,59 @@ type DTLSServer struct {
 	chReceiveMsg chan *gBase.SocketMessage
 	chClose      chan string
 }
+func New(config gBase.ConfigOption, chReceiveRequest chan *gBase.Payload) *gTLS {
 
-func New(config gBase.ConfigOption, chReceiveRequest chan *gBase.Payload) *DTLSServer {
+	if !config.Tls.IsTLS {
+		return nil
+	}
+	if config.Tls.Cert == "" {
+		return nil
+	}
+	if config.Tls.Key == "" {
+		return nil
+	}
 
+	cer, err := tls.LoadX509KeyPair(config.Tls.Cert, config.Tls.Key)
+	//fmt.Printf("%v\n")
+	if err != nil {
+		fmt.Printf("Load Cert Error %v",err.Error())
+	}
 	b := gBase.GServer{
 		Config:           &config,
 		ChReceiveRequest: chReceiveRequest,
+
 	}
-	p := &DTLSServer{
+	p := &gTLS{
 		GServer:      b,
 		chReceiveMsg: make(chan *gBase.SocketMessage, 100),
 		chClose:      make(chan string),
-		isRunning:    true,
-	}
-
-	var err error
-	p.ctx, p.cancel = context.WithCancel(context.Background())
-	_config := dtls.Config{
-		PSK: func(hint []byte) ([]byte, error) {
-			return []byte{0x86, 0x73, 0x86, 0x65, 0x83}, nil
-		},
-		PSKIdentityHint:      []byte("VIVAS-RDPA DTLS Client"),
-		CipherSuites:         []dtls.CipherSuiteID{dtls.TLS_PSK_WITH_AES_256_CCM_8},
-		ExtendedMasterSecret: dtls.RequireExtendedMasterSecret,
-		ConnectContextMaker: func() (context.Context, func()) {
-			return context.WithTimeout(p.ctx, 30*time.Second)
-		},
-	}
-	_, _port, err1 := net.SplitHostPort(p.Config.Addr)
-	if err1 != nil {
-		p.LogError("SplitHostPort %v", err1.Error())
-		return nil
-	}
-	port, err2 := strconv.ParseInt(_port, 10, 0)
-	if err2 != nil {
-		p.LogError("strconv.ParseInt %v", err2.Error())
-		return nil
-	}
-	addr := &net.UDPAddr{IP: net.ParseIP(p.Config.Addr), Port: int(port)}
-	p.listener, err = dtls.Listen("udp", addr, &_config)
-	if err != nil {
-		p.LogError("dtls listen %v", err.Error())
-		return nil
+		tls_config: &tls.Config{Certificates: []tls.Certificate{cer},MaxVersion: tls.VersionTLS13,MinVersion: tls.VersionTLS12,Rand: rand.Reader},
+		isRunning: true,
 	}
 	return p
 }
-
-func (p *DTLSServer) Serve() error {
-	p.LogInfo("Listening on %v",p.Config.Addr)
+func (p *gTLS) Serve() error {
+	ln, err := tls.Listen("tcp", p.Config.Addr, p.tls_config)
+	if err != nil {
+		p.LogError("tls.Listen error => %v",err.Error())
+		return err
+	}
+	p.tls_ln = &ln
 	go p.wait_for_new_connection()
+	p.LogInfo("Listening on %v",p.Config.Addr)
 	for i := 0; i < runtime.NumCPU(); i++ {
 		go p.receiveMsg()
 	}
 	go p.connection_close()
 	return nil
 }
-func (p *DTLSServer) connection_close() {
+func (p *gTLS) connection_close() {
 loop:
 	for {
 		select {
 		case key := <-p.chClose:
+			p.LogInfo("Close Connection %v",key)
 			p.mu.Lock()
-			defer p.mu.Unlock()
 			if _conn, ok := p.clients.Load(key); ok {
 				/// remove fd has connection
 				conn := _conn.(*gBase.Connection)
@@ -117,22 +108,22 @@ loop:
 					}()
 				}
 				p.clients.Delete(key)
+
 			}
+			p.mu.Unlock()
 		case <-*p.Config.Done:
 			p.isRunning = false
 			break loop
 		}
 	}
 }
-func (p *DTLSServer) wait_for_new_connection() {
-	// Wait for a connection.
-	for p.isRunning{
-
-		conn, err := p.listener.Accept()
-		if err != nil { /// store connection
-			p.LogInfo("New Connection Error %v", err.Error())
+func (p *gTLS) wait_for_new_connection(){
+	for p.isRunning {
+		conn, err := (*p.tls_ln).Accept()
+		if err != nil {
+			p.LogError("Accept Connection Error %v ",err.Error())
+			continue
 		}
-
 		// store connection
 		_, _port, err := net.SplitHostPort(conn.RemoteAddr().String())
 		if err != nil {
@@ -145,10 +136,11 @@ func (p *DTLSServer) wait_for_new_connection() {
 			continue
 		}
 
-		key := fmt.Sprintf("%s_%s", p.Config.Protocol.String(), _port)
+		key := fmt.Sprintf("%s_%d", p.Config.Protocol.String(), port)
 		p.LogInfo("Client %v %v", key, conn.RemoteAddr().Network())
 		p.mu.Lock()
 		defer p.mu.Unlock()
+
 		newConn := gBase.NewConnection(&gBase.ServerConnection{
 			DecType: p.Config.EncodeType,
 		}, &gBase.ClientConnection{
@@ -156,27 +148,24 @@ func (p *DTLSServer) wait_for_new_connection() {
 			Conn: &conn,
 		})
 		p.clients.Store(key, newConn)
-		go p.readMsg(newConn)
-		// send hello Msg
-		p.SendHelloMsg(newConn)
+		go p.SendHelloMsg(newConn)
+		go p.handleConnection(newConn)
+
 	}
 }
-
-func (p *DTLSServer) readMsg(conn *gBase.Connection) {
+func (p *gTLS) handleConnection(conn *gBase.Connection){
 	defer (*conn.Client.Conn).Close()
-	b := make([]byte, 8192)
-	for {
-		if !p.isRunning {
-			break
-		}
-		n, err := (*conn.Client.Conn).Read(b)
+	r := bufio.NewReader(*conn.Client.Conn)
+	for p.isRunning {
+		b := make([]byte, 8192)
+		n,err := r.Read(b)
 		if err != nil {
-			//h.unregister(conn)
+			p.LogInfo("%v",err.Error())
 			key := fmt.Sprintf("%v_%v", p.Config.Protocol.String(), conn.Client.Fd)
 			p.chClose <- key
-			break
+			return
 		}
-		msgs := gBase.DecodeDTLSPacket(b[:n])
+		msgs := gBase.DecodeTLSPacket(b[:n])
 		for i := range msgs {
 			msg := msgs[i]
 			msg.Conn = conn
@@ -186,7 +175,13 @@ func (p *DTLSServer) readMsg(conn *gBase.Connection) {
 	}
 }
 
-func (p *DTLSServer) receiveMsg() {
+func (p *gTLS) Close() {
+	p.LogInfo("Close")
+	(*p.tls_ln).Close()
+}
+
+
+func (p *gTLS) receiveMsg() {
 loop:
 	for {
 		select {
@@ -233,7 +228,7 @@ loop:
 		}
 	}
 }
-func (p *DTLSServer) onClientKeepAlive(msg *gBase.SocketMessage) {
+func (p *gTLS) onClientKeepAlive(msg *gBase.SocketMessage) {
 	p.LogInfo("Receive KeepAlive Request from connection id %d", msg.Conn.Client.Fd)
 	hlRequest := api.KeepAlive_Request{}
 	status := uint32(api.ResultType_OK)
@@ -274,7 +269,7 @@ func (p *DTLSServer) onClientKeepAlive(msg *gBase.SocketMessage) {
 		(*conn.Client.Conn).Write(_buf)
 	}
 }
-func (p *DTLSServer) onSetupConnection(msg *gBase.SocketMessage) {
+func (p *gTLS) onSetupConnection(msg *gBase.SocketMessage) {
 	p.LogInfo("onSetupConnection")
 	hlRequest := api.Hello_Request{}
 	status := uint32(api.ResultType_OK)
@@ -320,14 +315,7 @@ func (p *DTLSServer) onSetupConnection(msg *gBase.SocketMessage) {
 	}
 }
 
-func (p *DTLSServer) Close() {
-	p.LogInfo("Close")
-	p.cancel()
-	p.listener.Close()
-
-}
-
-func (p *DTLSServer) MarkConnectioIsAuthen(token string, user_id string, client_id string, payload_type gBase.PayloadType) {
+func (p *gTLS) MarkConnectioIsAuthen(token string, user_id string, client_id string, payload_type gBase.PayloadType) {
 	p.LogDebug("Mark Connection %v - %v - %v", client_id, token, user_id)
 	go func() {
 		// đánh dấu connection id thuộc session nào
@@ -376,7 +364,7 @@ func (p *DTLSServer) MarkConnectioIsAuthen(token string, user_id string, client_
 	}()
 }
 
-func (p *DTLSServer) SendHelloMsg(conn *gBase.Connection) {
+func (p *gTLS) SendHelloMsg(conn *gBase.Connection) {
 	p.LogInfo("Send Msg Hello to conn %v", conn.Client.Fd)
 	helloReceive := api.HelloReceive{
 		ServerTime:       uint64(time.Now().Unix()),
@@ -398,7 +386,7 @@ func (p *DTLSServer) SendHelloMsg(conn *gBase.Connection) {
 	(*conn.Client.Conn).Write(out)
 }
 
-func (p *DTLSServer) PushMessage(rqPush api.PushReceive_Request) {
+func (p *gTLS) PushMessage(rqPush api.PushReceive_Request) {
 	if rqPush.PushType == api.PushReceive_TO_ALL {
 		p.LogDebug("PUSH ALL USER")
 		/// push all user
@@ -436,7 +424,7 @@ func (p *DTLSServer) PushMessage(rqPush api.PushReceive_Request) {
 	}
 	//MARK PUSH TO OTHER GATEWAY
 }
-func (p *DTLSServer) pushToUser(user_id string, rqPush *api.PushReceive_Request) {
+func (p *gTLS) pushToUser(user_id string, rqPush *api.PushReceive_Request) {
 	/// Lấy danh sách session của 1 user
 	p.LogDebug("pushToUser %v", user_id)
 	if _user, ok := p.users.Load(user_id); ok {
@@ -455,7 +443,7 @@ func (p *DTLSServer) pushToUser(user_id string, rqPush *api.PushReceive_Request)
 		})
 	}
 }
-func (p *DTLSServer) pushToSession(session_id string, rqPush *api.PushReceive_Request) {
+func (p *gTLS) pushToSession(session_id string, rqPush *api.PushReceive_Request) {
 	/// Lấy danh sách connection của 1 session
 	p.LogDebug("pushToSession %v", session_id)
 	if connections_map, ok := p.sessions.Load(session_id); ok {
@@ -473,7 +461,7 @@ func (p *DTLSServer) pushToSession(session_id string, rqPush *api.PushReceive_Re
 	}
 }
 
-func (p *DTLSServer) pushToConnection(connection_id string, rqPush *api.PushReceive_Request) {
+func (p *gTLS) pushToConnection(connection_id string, rqPush *api.PushReceive_Request) {
 	/// lấy kết nối qua fd(connection_id) và thực hiện đóng gói đẩy msg
 	p.mu.Lock()
 	if c, ok := p.clients.Load(connection_id); ok {

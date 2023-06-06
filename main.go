@@ -7,7 +7,9 @@ import (
 	"gitlab.vivas.vn/go/grpc_api/api"
 	"gitlab.vivas.vn/go/gserver/gBase"
 	"gitlab.vivas.vn/go/gserver/gDTLS"
-	"gitlab.vivas.vn/go/gserver/gHTTP"
+	"gitlab.vivas.vn/go/gserver/gTLS"
+
+	//"gitlab.vivas.vn/go/gserver/gHTTP"
 	"gitlab.vivas.vn/go/internal/encryption/aes"
 	"gitlab.vivas.vn/go/internal/encryption/rsa"
 	"gitlab.vivas.vn/go/internal/encryption/xor"
@@ -26,17 +28,26 @@ func main() {
 
 	cf := gBase.DefaultHttpsConfigOption
 	cf.Logger = _logger
-	cf.Tls.Cert = "/Users/dungnt/Desktop/vivas/certificate.pem"
-	cf.Tls.Key = "/Users/dungnt/Desktop/vivas/private.key"
-	cf.Done = &done
-	hsv := gHTTP.New(cf,chReceiveRequest)
-	hsv.Serve()
+	//cf.Tls.Cert = "/Users/dungnt/Desktop/vivas/certificate.pem"
+	//cf.Tls.Key = "/Users/dungnt/Desktop/vivas/private.key"
+	//cf.Done = &done
+	//hsv := gHTTP.New(cf,chReceiveRequest)
+	//hsv.Serve()
 	cf_dtls := gBase.DefaultDTLSSocketConfigOption
 	cf_dtls.EncodeType = gBase.Encryption_AES
 	cf_dtls.Logger = _logger
 	cf_dtls.Done = &done
 	dtls := gDTLS.New(cf_dtls,chReceiveRequest)
 	dtls.Serve()
+
+	cf_tls := gBase.DefaultTlsSocketConfigOption
+	cf_tls.Tls.Cert = "/Users/dungnt/Desktop/vivas/certificate.pem"
+	cf_tls.Tls.Key = "/Users/dungnt/Desktop/vivas/private.key"
+	cf_tls.Done = &done
+	cf_tls.EncodeType = gBase.Encryption_AES
+	cf_tls.Logger = _logger
+	tls_sv := gTLS.New(cf_tls,chReceiveRequest)
+	tls_sv.Serve()
 
 
 	//
@@ -274,7 +285,7 @@ func main() {
 	//	}
 	//}
 
-	go dtls_client(&done)
+	//go dtls_client(&done)
 	<-done
 
 }

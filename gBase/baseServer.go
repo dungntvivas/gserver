@@ -10,7 +10,7 @@ type RequestProtocol uint8
 
 const (
 	RequestProtocol_HTTP   RequestProtocol = 0x2
-	RequestProtocol_TLS RequestProtocol = 0x4
+	RequestProtocol_TLS    RequestProtocol = 0x4
 	RequestProtocol_GRPC   RequestProtocol = 0x8
 	RequestProtocol_TCP    RequestProtocol = 0x10
 	RequestProtocol_WS     RequestProtocol = 0x20
@@ -177,6 +177,17 @@ var DefaultTcpSocketConfigOption = ConfigOption{
 	ServerName: "TCP",
 	EncodeType: Encryption_NONE,
 }
+var DefaultTlsSocketConfigOption = ConfigOption{
+	Addr:       ":44424",
+	Tls:        TLS{
+		IsTLS: true,
+		Cert: "",
+		Key: "",
+	},
+	Protocol:   RequestProtocol_TLS,
+	ServerName: "TLS",
+	EncodeType: Encryption_NONE,
+}
 var DefaultWebSocketConfigOption = ConfigOption{
 	Addr:       ":44223",
 	Tls:        TLS{IsTLS: false},
@@ -199,7 +210,7 @@ var DefaultUdsSocketConfigOption = ConfigOption{
 	EncodeType: Encryption_NONE,
 }
 var DefaultDTLSSocketConfigOption = ConfigOption{
-	Addr:       "0.0.0.0:44444",
+	Addr:       ":44444",
 	Tls:        TLS{IsTLS: true},
 	Protocol:   RequestProtocol_DTLS,
 	ServerName: "DTLS Socket",
