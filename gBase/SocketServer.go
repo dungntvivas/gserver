@@ -241,34 +241,8 @@ func (p *SocketServer) onReceiveRequest(msg *SocketMessage) {
 		p.onClientKeepAlive(msg)
 		return
 	}
-	if msg.MsgGroup != uint32(api.AUTHEN_GROUP_AUTHEN_GROUP_ID) {
-		// check authen
-		if !msg.Conn.IsOK() {
-			p.LogError("Connection %d - isAuthen %v -- group %v -- type %v", msg.Fd, msg.Conn.Client.IsAuthen, msg.MsgGroup, msg.MsgType)
-			_re := NewReply(uint32(api.ResultType_REQUEST_INVALID))
-			_re.Msg = "REQUEST_INVALID"
-			if !msg.Conn.Client.IsAuthen { // client chưa xác thực kết nối
-				_re = NewReply(uint32(api.ResultType_SESSION_INVALID))
-				_re.Msg = "SESSION_INVALID"
-			}
-			if _buf, err := GetReplyBuffer(msg.MsgType, msg.MsgGroup, msg.MSG_ID, _re, Encryption_NONE, nil); err == nil {
-				if c, o := p.clients.Load(fmt.Sprintf("%s_%d", p.Config.Protocol.String(), msg.Fd)); o {
-					if p.Config.Protocol == RequestProtocol_WS {
-						if msg.TypePayload == PayloadType_JSON {
-							wsutil.WriteServerMessage((*c.(*gnet.Conn)), ws.OpText, []byte(fmt.Sprintf("{\"status\":%d, \"msg\":\"%s\"}", uint32(api.ResultType_REQUEST_INVALID), "REQUEST_INVALID")))
-						} else {
-							wsutil.WriteServerMessage((*c.(*gnet.Conn)), ws.OpBinary, _buf)
-						}
 
-					} else {
-						(*c.(*gnet.Conn)).AsyncWrite(_buf, nil)
-					}
-				}
-			}
 
-			return
-		}
-	}
 	rq := api.Request{}
 	rq.Type = msg.MsgType
 	rq.Group = msg.MsgGroup

@@ -192,7 +192,7 @@ loop:
 				p.onSetupConnection(msg)
 			} else if msg.MsgType == uint32(api.TYPE_ID_REQUEST_KEEPALIVE) && msg.MsgGroup == uint32(api.CONNECTION_GROUP_CONNECTION_GROUP_ID) {
 				p.onClientKeepAlive(msg)
-			} else if msg.MsgGroup != uint32(api.AUTHEN_GROUP_AUTHEN_GROUP_ID) {
+			} else {
 				rq := api.Request{}
 				rq.Type = msg.MsgType
 				rq.Group = msg.MsgGroup

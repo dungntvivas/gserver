@@ -2,12 +2,15 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"github.com/pion/dtls/v2"
 	"gitlab.vivas.vn/go/grpc_api/api"
 	"gitlab.vivas.vn/go/gserver/gBase"
 	"gitlab.vivas.vn/go/gserver/gDTLS"
 	"gitlab.vivas.vn/go/gserver/gTLS"
+	"log"
 
 	//"gitlab.vivas.vn/go/gserver/gHTTP"
 	"gitlab.vivas.vn/go/internal/encryption/aes"
@@ -44,7 +47,7 @@ func main() {
 	cf_tls.Tls.Cert = "/Users/dungnt/Desktop/vivas/certificate.pem"
 	cf_tls.Tls.Key = "/Users/dungnt/Desktop/vivas/private.key"
 	cf_tls.Done = &done
-	cf_tls.EncodeType = gBase.Encryption_AES
+	cf_tls.EncodeType = gBase.Encryption_RSA
 	cf_tls.Logger = _logger
 	tls_sv := gTLS.New(cf_tls,chReceiveRequest)
 	tls_sv.Serve()
@@ -285,9 +288,139 @@ func main() {
 	//	}
 	//}
 
-	//go dtls_client(&done)
+	go dtls_client(&done)
+	go tls_client(&done)
 	<-done
 
+}
+
+func tls_client(done *chan struct{}){
+	time.Sleep(time.Second*2)
+	conf := &tls.Config{
+		InsecureSkipVerify: true,
+	}
+
+	conn, err := tls.Dial("tcp", "127.0.0.1:44424", conf)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	defer conn.Close()
+	state := conn.ConnectionState()
+	for _, v := range state.PeerCertificates {
+		fmt.Println(x509.MarshalPKIXPublicKey(v.PublicKey))
+		fmt.Println(v.Subject)
+	}
+	go func (_conn *tls.Conn){
+		buf := make([]byte, 8192)
+		_rsa, _ := rsa.VRSA_NEW()
+		aes_key, _ := aes.NEW_AES_KEY()
+		xor_lable, _ := xor.NEW_XOR_KEY()
+		encode := api.EncodeType_AES
+		hlReceive := api.HelloReceive{}
+		hlReply := api.Hello_Reply{}
+
+		for {
+			n, err := _conn.Read(buf)
+			if err != nil {
+				break
+			}
+			fmt.Printf("Receive %d byte\n", n)
+			msg := gBase.DecodeData(buf[0:n], n)
+			if msg.MSG_encode_decode_type == gBase.Encryption_RSA {
+				msg.Conn = &gBase.Connection{
+					Server: &gBase.ServerConnection{
+						Rsa: _rsa,
+					},
+				}
+			} else if msg.MSG_encode_decode_type == gBase.Encryption_AES {
+				msg.Conn = &gBase.Connection{
+					Server: &gBase.ServerConnection{
+						PKey: aes_key,
+					},
+				}
+			} else if msg.MSG_encode_decode_type == gBase.Encryption_XOR {
+				msg.Lable = xor_lable
+			}
+
+			if msg.MsgType == uint32(api.TYPE_ID_RECEIVE_HELLO) && msg.MsgGroup == uint32(api.CONNECTION_GROUP_CONNECTION_GROUP_ID) {
+				receive := api.Receive{}
+				msg.ToProtoModel(&receive)
+				//fmt.Printf("Server time => %v\n", receive.ServerTime)
+
+				receive.Receive.UnmarshalTo(&hlReceive)
+				//fmt.Printf("Server Encrypt Type => %v\n", hlReceive.ServerEncodeType.String())
+
+				// setup client receive encode
+				request := api.Request{
+					Type:  uint32(api.TYPE_ID_REQUEST_HELLO),
+					Group: uint32(api.CONNECTION_GROUP_CONNECTION_GROUP_ID),
+				}
+				request_hello := api.Hello_Request{
+					EncodeType: encode,
+					PKey:       aes_key,
+					Platform:   api.Platform_WEB,
+				}
+				_request_hello, _ := anypb.New(&request_hello)
+				request.Request = _request_hello
+				// api.Request --> binary
+				_request, _ := proto.Marshal(&request)
+
+				// encode send to server
+				newMsg := gBase.NewMessage(_request, uint32(api.CONNECTION_GROUP_CONNECTION_GROUP_ID), request.Type, []byte{1, 2, 3, 4, 5})
+				_p, _ := newMsg.Encode(gBase.Encryption_Type(hlReceive.ServerEncodeType), hlReceive.PKey,false)
+
+				_conn.Write(_p)
+			}else if msg.MsgType == uint32(api.TYPE_ID_REQUEST_HELLO) && msg.MsgGroup == uint32(api.CONNECTION_GROUP_CONNECTION_GROUP_ID) {
+				reply := api.Reply{}
+				//msg.Lable = lable
+				msg.ToProtoModel(&reply)
+
+				reply.Reply.UnmarshalTo(&hlReply)
+
+				if reply.Status == 0 {
+					fmt.Printf("Setup Connection OK => Send PING REQUEST\n")
+					// send ping request
+					rq := gBase.NewRequest(uint32(api.TYPE_ID_REQUEST_KEEPALIVE), uint32(api.CONNECTION_GROUP_CONNECTION_GROUP_ID))
+					pingRequest := api.KeepAlive_Request{
+						ConnectionId: hlReply.ConnectionId,
+					}
+					if err := gBase.PackRequest(rq, &pingRequest); err != nil {
+						fmt.Printf("%v", err.Error())
+						break
+					}
+					_rq, err := gBase.MsgToByte(rq)
+					if err != nil {
+						fmt.Printf("%v", err.Error())
+						break
+					}
+					newMsg := gBase.NewMessage(_rq, uint32(api.CONNECTION_GROUP_CONNECTION_GROUP_ID), rq.Type, []byte{2, 3, 4, 5, 6})
+					_p, _ := newMsg.Encode(gBase.Encryption_Type(hlReceive.ServerEncodeType), hlReceive.PKey,false)
+					_conn.Write(_p)
+				}
+			}else if msg.MsgType == uint32(api.TYPE_ID_REQUEST_KEEPALIVE) && msg.MsgGroup == uint32(api.CONNECTION_GROUP_CONNECTION_GROUP_ID) {
+				fmt.Printf("PING REQUEST\n")
+				time.Sleep(time.Second * 5)
+				rq := gBase.NewRequest(uint32(api.TYPE_ID_REQUEST_KEEPALIVE), uint32(api.CONNECTION_GROUP_CONNECTION_GROUP_ID))
+				pingRequest := api.KeepAlive_Request{
+					ConnectionId: hlReply.ConnectionId,
+				}
+				if err := gBase.PackRequest(rq, &pingRequest); err != nil {
+					fmt.Printf("%v", err.Error())
+					break
+				}
+				_rq, err := gBase.MsgToByte(rq)
+				if err != nil {
+					fmt.Printf("%v", err.Error())
+					break
+				}
+				newMsg := gBase.NewMessage(_rq, uint32(api.CONNECTION_GROUP_CONNECTION_GROUP_ID), rq.Type, []byte{2, 3, 4, 5, 6})
+				_p, _ := newMsg.Encode(gBase.Encryption_Type(hlReceive.ServerEncodeType), hlReceive.PKey,false)
+				_conn.Write(_p)
+			}
+		}
+	}(conn)
+	<-*done
 }
 
 
