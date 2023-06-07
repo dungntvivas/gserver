@@ -18,7 +18,7 @@ import (
 	"time"
 )
 
-type gTLS struct {
+type TLSServer struct {
 	gBase.GServer
 	isRunning bool
 	// tls config
@@ -38,7 +38,7 @@ type gTLS struct {
 	chReceiveMsg chan *gBase.SocketMessage
 	chClose      chan string
 }
-func New(config gBase.ConfigOption, chReceiveRequest chan *gBase.Payload) *gTLS {
+func New(config gBase.ConfigOption, chReceiveRequest chan *gBase.Payload) *TLSServer {
 
 	if !config.Tls.IsTLS {
 		return nil
@@ -60,7 +60,7 @@ func New(config gBase.ConfigOption, chReceiveRequest chan *gBase.Payload) *gTLS 
 		ChReceiveRequest: chReceiveRequest,
 
 	}
-	p := &gTLS{
+	p := &TLSServer{
 		GServer:      b,
 		chReceiveMsg: make(chan *gBase.SocketMessage, 100),
 		chClose:      make(chan string),
@@ -69,7 +69,7 @@ func New(config gBase.ConfigOption, chReceiveRequest chan *gBase.Payload) *gTLS 
 	}
 	return p
 }
-func (p *gTLS) Serve() error {
+func (p *TLSServer) Serve() error {
 	ln, err := tls.Listen("tcp", p.Config.Addr, p.tls_config)
 	if err != nil {
 		p.LogError("tls.Listen error => %v",err.Error())
@@ -84,7 +84,7 @@ func (p *gTLS) Serve() error {
 	go p.connection_close()
 	return nil
 }
-func (p *gTLS) connection_close() {
+func (p *TLSServer) connection_close() {
 loop:
 	for {
 		select {
@@ -117,7 +117,7 @@ loop:
 		}
 	}
 }
-func (p *gTLS) wait_for_new_connection(){
+func (p *TLSServer) wait_for_new_connection(){
 	for p.isRunning {
 		conn, err := (*p.tls_ln).Accept()
 		if err != nil {
@@ -153,7 +153,7 @@ func (p *gTLS) wait_for_new_connection(){
 
 	}
 }
-func (p *gTLS) handleConnection(conn *gBase.Connection){
+func (p *TLSServer) handleConnection(conn *gBase.Connection){
 	defer (*conn.Client.Conn).Close()
 	r := bufio.NewReader(*conn.Client.Conn)
 	for p.isRunning {
@@ -175,13 +175,15 @@ func (p *gTLS) handleConnection(conn *gBase.Connection){
 	}
 }
 
-func (p *gTLS) Close() {
+func (p *TLSServer) Close() {
 	p.LogInfo("Close")
+	p.isRunning = false
 	(*p.tls_ln).Close()
+
 }
 
 
-func (p *gTLS) receiveMsg() {
+func (p *TLSServer) receiveMsg() {
 loop:
 	for {
 		select {
@@ -228,7 +230,7 @@ loop:
 		}
 	}
 }
-func (p *gTLS) onClientKeepAlive(msg *gBase.SocketMessage) {
+func (p *TLSServer) onClientKeepAlive(msg *gBase.SocketMessage) {
 	p.LogInfo("Receive KeepAlive Request from connection id %d", msg.Conn.Client.Fd)
 	hlRequest := api.KeepAlive_Request{}
 	status := uint32(api.ResultType_OK)
@@ -269,7 +271,7 @@ func (p *gTLS) onClientKeepAlive(msg *gBase.SocketMessage) {
 		(*conn.Client.Conn).Write(_buf)
 	}
 }
-func (p *gTLS) onSetupConnection(msg *gBase.SocketMessage) {
+func (p *TLSServer) onSetupConnection(msg *gBase.SocketMessage) {
 	p.LogInfo("onSetupConnection")
 	hlRequest := api.Hello_Request{}
 	status := uint32(api.ResultType_OK)
@@ -315,7 +317,7 @@ func (p *gTLS) onSetupConnection(msg *gBase.SocketMessage) {
 	}
 }
 
-func (p *gTLS) MarkConnectioIsAuthen(token string, user_id string, client_id string, payload_type gBase.PayloadType) {
+func (p *TLSServer) MarkConnectioIsAuthen(token string, user_id string, client_id string, payload_type gBase.PayloadType) {
 	p.LogDebug("Mark Connection %v - %v - %v", client_id, token, user_id)
 	go func() {
 		// đánh dấu connection id thuộc session nào
@@ -364,7 +366,7 @@ func (p *gTLS) MarkConnectioIsAuthen(token string, user_id string, client_id str
 	}()
 }
 
-func (p *gTLS) SendHelloMsg(conn *gBase.Connection) {
+func (p *TLSServer) SendHelloMsg(conn *gBase.Connection) {
 	p.LogInfo("Send Msg Hello to conn %v", conn.Client.Fd)
 	helloReceive := api.HelloReceive{
 		ServerTime:       uint64(time.Now().Unix()),
@@ -386,7 +388,7 @@ func (p *gTLS) SendHelloMsg(conn *gBase.Connection) {
 	(*conn.Client.Conn).Write(out)
 }
 
-func (p *gTLS) PushMessage(rqPush api.PushReceive_Request) {
+func (p *TLSServer) PushMessage(rqPush api.PushReceive_Request) {
 	if rqPush.PushType == api.PushReceive_TO_ALL {
 		p.LogDebug("PUSH ALL USER")
 		/// push all user
@@ -424,7 +426,7 @@ func (p *gTLS) PushMessage(rqPush api.PushReceive_Request) {
 	}
 	//MARK PUSH TO OTHER GATEWAY
 }
-func (p *gTLS) pushToUser(user_id string, rqPush *api.PushReceive_Request) {
+func (p *TLSServer) pushToUser(user_id string, rqPush *api.PushReceive_Request) {
 	/// Lấy danh sách session của 1 user
 	p.LogDebug("pushToUser %v", user_id)
 	if _user, ok := p.users.Load(user_id); ok {
@@ -443,7 +445,7 @@ func (p *gTLS) pushToUser(user_id string, rqPush *api.PushReceive_Request) {
 		})
 	}
 }
-func (p *gTLS) pushToSession(session_id string, rqPush *api.PushReceive_Request) {
+func (p *TLSServer) pushToSession(session_id string, rqPush *api.PushReceive_Request) {
 	/// Lấy danh sách connection của 1 session
 	p.LogDebug("pushToSession %v", session_id)
 	if connections_map, ok := p.sessions.Load(session_id); ok {
@@ -461,7 +463,7 @@ func (p *gTLS) pushToSession(session_id string, rqPush *api.PushReceive_Request)
 	}
 }
 
-func (p *gTLS) pushToConnection(connection_id string, rqPush *api.PushReceive_Request) {
+func (p *TLSServer) pushToConnection(connection_id string, rqPush *api.PushReceive_Request) {
 	/// lấy kết nối qua fd(connection_id) và thực hiện đóng gói đẩy msg
 	p.mu.Lock()
 	if c, ok := p.clients.Load(connection_id); ok {

@@ -322,6 +322,7 @@ func (p *DTLSServer) onSetupConnection(msg *gBase.SocketMessage) {
 
 func (p *DTLSServer) Close() {
 	p.LogInfo("Close")
+	p.isRunning = false
 	p.cancel()
 	p.listener.Close()
 
