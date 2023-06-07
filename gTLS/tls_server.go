@@ -178,6 +178,7 @@ func (p *TLSServer) handleConnection(conn *gBase.Connection){
 func (p *TLSServer) Close() {
 	p.LogInfo("Close")
 	p.isRunning = false
+	close(p.chReceiveMsg)
 	(*p.tls_ln).Close()
 
 }

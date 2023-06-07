@@ -3,7 +3,6 @@ package gBase
 import (
 	"bytes"
 	"fmt"
-	"net"
 	"runtime"
 	"sync"
 	"time"
@@ -31,7 +30,6 @@ func contains(slice []string, item string) bool {
 type SocketServer struct {
 	GServer
 	gnet.BuiltinEventEngine
-	lis  net.Listener
 	Done *chan struct{}
 
 	mu      sync.Mutex
@@ -504,5 +502,6 @@ func (p *SocketServer) onClientKeepAlive(msg *SocketMessage) {
 }
 func (p *SocketServer) Close() {
 	p.LogInfo("Close")
-	p.lis.Close()
+	close(p.chReceiveMsg)
+
 }
