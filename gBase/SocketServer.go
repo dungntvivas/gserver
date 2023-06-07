@@ -32,7 +32,7 @@ type SocketServer struct {
 	GServer
 	gnet.BuiltinEventEngine
 	lis  net.Listener
-	Done chan struct{}
+	Done *chan struct{}
 
 	mu      sync.Mutex
 	clients sync.Map // FD ==> Connection ( 1 connection chứa thông tin kết nối ) client_id has connection
@@ -60,7 +60,7 @@ func NewSocket(config ConfigOption, chReceiveRequest chan *Payload) SocketServer
 	}
 	p := SocketServer{
 		GServer:      b,
-		Done:         make(chan struct{}),
+		Done:         config.Done,
 		chReceiveMsg: make(chan *SocketMessage, 100),
 	}
 	return p
@@ -81,14 +81,14 @@ func (p *SocketServer) Serve() {
 	}
 }
 func (p *SocketServer) OnBoot(eng gnet.Engine) gnet.Action {
-	p.LogDebug("Listener opened on %s", p.Config.Addr)
+	p.LogInfo("Listener opened on %s", p.Config.Addr)
 	return gnet.None
 }
 func (p *SocketServer) OnShutdown(eng gnet.Engine) {
 
 }
 func (p *SocketServer) OnOpen(c gnet.Conn) (out []byte, action gnet.Action) {
-	p.LogDebug("conn [%v] Open Connection", c.Fd())
+	p.LogInfo("conn [%v] Open Connection", c.Fd())
 	// build msg  hello send to client
 
 	newConn := NewConnection(&ServerConnection{
@@ -221,7 +221,7 @@ func (p *SocketServer) receiveMessage() {
 loop:
 	for {
 		select {
-		case <-p.Done:
+		case <-*p.Done:
 			break loop
 		case msg := <-p.chReceiveMsg:
 			p.onReceiveRequest(msg)
@@ -504,5 +504,5 @@ func (p *SocketServer) onClientKeepAlive(msg *SocketMessage) {
 }
 func (p *SocketServer) Close() {
 	p.LogInfo("Close")
-	close(p.Done)
+	p.lis.Close()
 }

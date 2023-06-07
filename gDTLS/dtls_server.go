@@ -131,6 +131,7 @@ func (p *DTLSServer) wait_for_new_connection() {
 		conn, err := p.listener.Accept()
 		if err != nil { /// store connection
 			p.LogInfo("New Connection Error %v", err.Error())
+			continue
 		}
 
 		// store connection
