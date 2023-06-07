@@ -11,6 +11,8 @@ import (
 	"gitlab.vivas.vn/go/gserver/gDTLS"
 	"gitlab.vivas.vn/go/gserver/gTLS"
 	"log"
+	"os"
+	"os/signal"
 
 	//"gitlab.vivas.vn/go/gserver/gHTTP"
 	"gitlab.vivas.vn/go/internal/encryption/aes"
@@ -23,9 +25,13 @@ import (
 	"time"
 )
 
+var interrupt chan os.Signal
+var tls_server *gTLS.TLSServer
+var dtls_server *gDTLS.DTLSServer
+var done chan struct{}
 func main() {
 
-	done := make(chan struct{})
+	done = make(chan struct{})
 	chReceiveRequest := make(chan *gBase.Payload)
 	_logger, _ := logger.New(logger.Info, logger.LogDestinations{logger.DestinationFile: {}, logger.DestinationStdout: {}}, "/tmp/server.log")
 
@@ -40,8 +46,8 @@ func main() {
 	cf_dtls.EncodeType = gBase.Encryption_AES
 	cf_dtls.Logger = _logger
 	cf_dtls.Done = &done
-	dtls := gDTLS.New(cf_dtls,chReceiveRequest)
-	dtls.Serve()
+	dtls_server = gDTLS.New(cf_dtls,chReceiveRequest)
+	dtls_server.Serve()
 
 	cf_tls := gBase.DefaultTlsSocketConfigOption
 	cf_tls.Tls.Cert = "/Users/dungnt/Desktop/vivas/certificate.pem"
@@ -49,10 +55,12 @@ func main() {
 	cf_tls.Done = &done
 	cf_tls.EncodeType = gBase.Encryption_RSA
 	cf_tls.Logger = _logger
-	tls_sv := gTLS.New(cf_tls,chReceiveRequest)
-	tls_sv.Serve()
+	tls_server = gTLS.New(cf_tls,chReceiveRequest)
+	tls_server.Serve()
 
+	interrupt = make(chan os.Signal, 1)
 
+	signal.Notify(interrupt, os.Interrupt)
 	//
 	//
 	//tcp_option := gBase.DefaultTcpSocketConfigOption
@@ -290,7 +298,27 @@ func main() {
 
 	go dtls_client(&done)
 	go tls_client(&done)
+	go onClose()
 	<-done
+
+}
+
+func onClose(){
+loop:
+	for {
+		select {
+		case <-interrupt:
+			break loop
+		}
+	}
+
+	if dtls_server != nil {
+		dtls_server.Close()
+	}
+	if tls_server != nil {
+		tls_server.Close()
+	}
+	close(done)
 
 }
 

@@ -178,9 +178,7 @@ func (p *TLSServer) handleConnection(conn *gBase.Connection){
 func (p *TLSServer) Close() {
 	p.LogInfo("Close")
 	p.isRunning = false
-	close(p.chReceiveMsg)
 	(*p.tls_ln).Close()
-
 }
 
 
@@ -191,6 +189,9 @@ loop:
 		case <-*p.Config.Done:
 			break loop
 		case msg := <-p.chReceiveMsg:
+			if msg == nil {
+				continue
+			}
 			if msg.MsgType == uint32(api.TYPE_ID_REQUEST_HELLO) && msg.MsgGroup == uint32(api.CONNECTION_GROUP_CONNECTION_GROUP_ID) {
 				p.onSetupConnection(msg)
 			} else if msg.MsgType == uint32(api.TYPE_ID_REQUEST_KEEPALIVE) && msg.MsgGroup == uint32(api.CONNECTION_GROUP_CONNECTION_GROUP_ID) {
@@ -230,6 +231,7 @@ loop:
 
 		}
 	}
+
 }
 func (p *TLSServer) onClientKeepAlive(msg *gBase.SocketMessage) {
 	p.LogInfo("Receive KeepAlive Request from connection id %d", msg.Conn.Client.Fd)
