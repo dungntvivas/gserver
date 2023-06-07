@@ -76,7 +76,7 @@ func (p *SocketServer) Serve() {
 	}
 	p.LogInfo("Start %v server ", p.Config.ServerName)
 	go gnet.Run(p, protocol+p.Config.Addr, gnet.WithMulticore(true), gnet.WithReusePort(true))
-	for i := 0; i < runtime.NumCPU()*2; i++ {
+	for i := 0; i < runtime.NumCPU(); i++ {
 		go p.receiveMessage()
 	}
 }
@@ -108,6 +108,7 @@ func (p *SocketServer) OnOpen(c gnet.Conn) (out []byte, action gnet.Action) {
 
 	return
 }
+
 func (p *SocketServer) OnClose(c gnet.Conn, err error) (action gnet.Action) {
 	p.LogDebug("conn [%v] Close", c.Fd())
 	p.mu.Lock()
@@ -131,9 +132,9 @@ func (p *SocketServer) OnClose(c gnet.Conn, err error) (action gnet.Action) {
 		p.clients.Delete(fmt.Sprintf("%s_%d", p.Config.Protocol.String(), c.Fd()))
 	}
 	p.mu.Unlock()
-
 	return gnet.Close
 }
+
 func (p *SocketServer) MarkConnectioIsAuthen(token string, user_id string, fd string, payload_type PayloadType) {
 	p.LogDebug("Mark Connection %v - %v - %v", fd, token, user_id)
 	go func() {
