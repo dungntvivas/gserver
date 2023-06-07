@@ -502,6 +502,4 @@ func (p *SocketServer) onClientKeepAlive(msg *SocketMessage) {
 }
 func (p *SocketServer) Close() {
 	p.LogInfo("Close")
-	close(p.chReceiveMsg)
-
 }
