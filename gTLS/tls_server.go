@@ -121,18 +121,18 @@ func (p *TLSServer) wait_for_new_connection(){
 	for p.isRunning {
 		conn, err := (*p.tls_ln).Accept()
 		if err != nil {
-			p.LogError("Accept Connection Error %v ",err.Error())
+			p.LogError("Accept Connection Error %v \n",err.Error())
 			continue
 		}
 		// store connection
 		_, _port, err := net.SplitHostPort(conn.RemoteAddr().String())
 		if err != nil {
-			p.LogError("SplitHostPort %v", err.Error())
+			p.LogError("SplitHostPort %v\n", err.Error())
 			continue
 		}
 		port, err := strconv.ParseInt(_port, 10, 0)
 		if err != nil {
-			p.LogError("strconv.ParseInt %v", err.Error())
+			p.LogError("strconv.ParseInt %v\n", err.Error())
 			continue
 		}
 
