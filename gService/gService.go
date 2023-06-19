@@ -1,6 +1,7 @@
 package gService
 
 import (
+	"gitlab.vivas.vn/go/gserver/gHTTP"
 	"os"
 	"os/signal"
 	"runtime"
@@ -28,6 +29,7 @@ type Service struct {
 	cb             HandlerRequest
 	Operator       sync.Map
 	grpc_server    *gRPC.GRPCServer
+	http_server    *gHTTP.HTTPServer
 	gw_server      api.APIClient
 	gw_enable      bool
 }
@@ -44,9 +46,23 @@ func NewService(SvName string, _log *logger.Logger, config gBase.ConfigOption) *
 	// config server http grpc ...
 	config.Logger = _log
 	p.grpc_server = gRPC.New(config, p.receiveRequest)
-
 	return p
 }
+
+func (p *Service) EmbedHttpService(config gBase.ConfigOption) bool{
+	if config.Tls.IsTLS {
+		if config.Tls.Cert == "" {
+			return false
+		}
+		if config.Tls.Key == "" {
+			return false
+		}
+	}
+	p.http_server = gHTTP.New(config, p.receiveRequest)
+
+	return true
+}
+
 func (p *Service) PushMessage(pType gBase.Push_Type, receiver []string, ignore_Type gBase.Push_Type, ignore_receiver string, msg_type uint32, msg *api.Receive) bool {
 	if !p.gw_enable {
 		return false
@@ -105,7 +121,9 @@ func (p *Service) Start() {
 	if p.grpc_server != nil {
 		p.grpc_server.Serve()
 	}
-
+	if p.http_server != nil {
+		p.http_server.Serve()
+	}
 	if p.grpc_server.Config.GW != nil && len(p.grpc_server.Config.GW) != 0 {
 		var err error
 		p.gw_server, err = gRPC.NewClientConn("gw", "gw.com.vivas.vn", p.grpc_server.Config.GW...)
@@ -140,6 +158,9 @@ loop:
 
 	if p.grpc_server != nil {
 		p.grpc_server.Close()
+	}
+	if p.http_server != nil {
+		p.http_server.Close()
 	}
 	close(p.receiveRequest)
 }
@@ -206,9 +227,7 @@ on_reply:
 		} else if payload.Request.PayloadType == uint32(gBase.PayloadType_BIN) {
 			dataByte, _ = proto.Marshal(reply)
 		}
-
 		reply.BinReply = dataByte
-
 		payload.ChReply <- reply
 		return
 	}
