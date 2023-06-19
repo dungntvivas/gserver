@@ -8,10 +8,10 @@ import (
 	"github.com/google/uuid"
 	"github.com/panjf2000/gnet/v2"
 	"gitlab.vivas.vn/go/grpc_api/api"
-	"gitlab.vivas.vn/go/internal/encryption/aes"
-	"gitlab.vivas.vn/go/internal/encryption/rsa"
-	"gitlab.vivas.vn/go/internal/encryption/xor"
-	"gitlab.vivas.vn/go/internal/logger"
+	"gitlab.vivas.vn/go/libinternal/encryption/aes"
+	"gitlab.vivas.vn/go/libinternal/encryption/rsa"
+	"gitlab.vivas.vn/go/libinternal/encryption/xor"
+	"gitlab.vivas.vn/go/libinternal/logger"
 	"google.golang.org/protobuf/proto"
 )
 

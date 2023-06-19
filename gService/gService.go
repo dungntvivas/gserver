@@ -12,7 +12,7 @@ import (
 	"gitlab.vivas.vn/go/grpc_api/api"
 	"gitlab.vivas.vn/go/gserver/gBase"
 	"gitlab.vivas.vn/go/gserver/gRPC"
-	"gitlab.vivas.vn/go/internal/logger"
+	"gitlab.vivas.vn/go/libinternal/logger"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 )

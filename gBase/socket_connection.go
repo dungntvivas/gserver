@@ -10,9 +10,9 @@ import (
 	"github.com/gobwas/ws"
 	"github.com/gobwas/ws/wsutil"
 	"github.com/panjf2000/gnet/v2"
-	"gitlab.vivas.vn/go/internal/encryption/aes"
-	"gitlab.vivas.vn/go/internal/encryption/rsa"
-	"gitlab.vivas.vn/go/internal/encryption/xor"
+	"gitlab.vivas.vn/go/libinternal/encryption/aes"
+	"gitlab.vivas.vn/go/libinternal/encryption/rsa"
+	"gitlab.vivas.vn/go/libinternal/encryption/xor"
 )
 
 type wsMessageBuf struct {

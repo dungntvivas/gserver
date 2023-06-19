@@ -30,7 +30,7 @@ import (
 	"gitlab.vivas.vn/go/grpc_api/api"
 	"gitlab.vivas.vn/go/gserver/gBase"
 	"gitlab.vivas.vn/go/gserver/gService"
-	"gitlab.vivas.vn/go/internal/logger"
+	"gitlab.vivas.vn/go/libinternal/logger"
 	"os"
 )
 

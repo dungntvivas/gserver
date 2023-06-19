@@ -3,7 +3,7 @@ package gBase
 import (
 	"gitlab.vivas.vn/go/grpc_api/api"
 
-	"gitlab.vivas.vn/go/internal/logger"
+	"gitlab.vivas.vn/go/libinternal/logger"
 )
 
 type RequestProtocol uint8
