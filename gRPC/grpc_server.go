@@ -91,6 +91,7 @@ func (p *GRPCServer) Close() {
 
 func (p *GRPCServer) SendRequest(ctx context.Context, request *api.Request) (*api.Reply, error) {
 	chReply := make(chan *api.Reply)
+	request.PayloadType = uint32(gBase.PayloadType_BIN)
 	// send data to handler
 	p.HandlerRequest(&gBase.Payload{Request: request, ChReply: chReply})
 	// wait for return data
