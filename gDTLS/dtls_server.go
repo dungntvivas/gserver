@@ -205,7 +205,7 @@ loop:
 				rq.BinRequest = msg.Payload
 				rq.PayloadType = uint32(msg.TypePayload)
 				rq.Protocol = uint32(p.Config.Protocol)
-				rq.Session = &api.Session{SessionId: msg.Conn.Session_id}
+				rq.Session = &api.Session{Token: msg.Conn.Session_id}
 				result := make(chan *api.Reply)
 				_payload := gBase.Payload{Request: &rq, ChReply: result, Connection_id: fmt.Sprintf("%s_%d", p.Config.Protocol.String(), msg.Fd)}
 				if msg.Conn.IsOK() {
