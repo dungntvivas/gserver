@@ -10,7 +10,7 @@ require (
 	github.com/panjf2000/gnet/v2 v2.1.2
 	github.com/pion/dtls/v2 v2.2.7
 	github.com/quic-go/quic-go v0.34.0
-	gitlab.vivas.vn/go/grpc_api v0.9.39
+	gitlab.vivas.vn/go/grpc_api v0.9.40
 	gitlab.vivas.vn/go/libinternal v1.0.4
 	golang.org/x/net v0.9.0
 	google.golang.org/grpc v1.52.0
