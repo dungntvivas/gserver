@@ -49,6 +49,7 @@ const (
 	PayloadType_BIN   PayloadType = 0x2
 	PayloadType_JSON  PayloadType = 0x4
 	PayloadType_PROTO PayloadType = 0x8
+	PayloadType_FILE  PayloadType = 0x10
 	PayloadType_NONE  PayloadType = 0x0
 )
 
