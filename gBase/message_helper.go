@@ -48,7 +48,7 @@ func PackReply(reply *api.Reply,src proto.Message) error{
 	if err != nil {
 		return err
 	}
-	reply.Reply = _rq
+	reply.Data = _rq
 	return nil
 }
 func MsgToByte(src proto.Message) ([]byte, error){
@@ -77,8 +77,8 @@ func GetReplyBuffer(msgType uint32,msgGroup uint32,msgID []byte,src *api.Reply,e
 	reply.Type = msgType
 	reply.Group = msgGroup
 
-	if (src.Reply != nil){
-		reply.Reply = src.Reply
+	if (src.Data != nil){
+		reply.Data = src.Data
 	}
 	_rep_buf,err := MsgToByte(reply)
 	if err != nil {

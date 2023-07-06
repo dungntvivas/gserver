@@ -441,7 +441,7 @@ func (p *SocketServer) onSetupConnection(msg *SocketMessage) {
 				}
 				var err error
 				if status == 0 {
-					_rep.Reply, err = anypb.New(&hlreply)
+					_rep.Data, err = anypb.New(&hlreply)
 				}
 				dataByte, err := protojson.Marshal(&_rep)
 				if err != nil {

@@ -149,9 +149,9 @@ on_return:
 	if res.Status != 0 {
 		if res.Status == uint32(api.ResultType_INTERNAL_SERVER_ERROR) {
 			status = http.StatusInternalServerError
-		} else if res.Status == uint32(api.ResultType_SESSION_EXPIRE) {
+		} else if res.Status == uint32(api.ResultType_TOKEN_EXPIRE) {
 			status = http.StatusForbidden
-		} else if res.Status == uint32(api.ResultType_SESSION_INVALID) {
+		} else if res.Status == uint32(api.ResultType_TOKEN_INVALID) {
 			status = http.StatusForbidden
 		}
 	}

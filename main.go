@@ -404,7 +404,7 @@ func tls_client(done *chan struct{}){
 				//msg.Lable = lable
 				msg.ToProtoModel(&reply)
 
-				reply.Reply.UnmarshalTo(&hlReply)
+				reply.Data.UnmarshalTo(&hlReply)
 
 				if reply.Status == 0 {
 					fmt.Printf("Setup Connection OK => Send PING REQUEST\n")
@@ -540,7 +540,7 @@ func dtls_client(done *chan struct{}){
 				//msg.Lable = lable
 				msg.ToProtoModel(&reply)
 
-				reply.Reply.UnmarshalTo(&hlReply)
+				reply.Data.UnmarshalTo(&hlReply)
 
 				if reply.Status == 0 {
 					fmt.Printf("Setup Connection OK => Send PING REQUEST\n")
