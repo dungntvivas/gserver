@@ -9,8 +9,8 @@ import (
 	"encoding/pem"
 	"math/big"
 
+	"github.com/DungntVccorp/gserver/gBase"
 	"github.com/quic-go/quic-go"
-	"gitlab.vivas.vn/go/gserver/gBase"
 )
 
 type QuicServer struct {

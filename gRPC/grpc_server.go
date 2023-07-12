@@ -4,8 +4,8 @@ import (
 	"context"
 	"net"
 
-	"gitlab.vivas.vn/go/grpc_api/api"
-	"gitlab.vivas.vn/go/gserver/gBase"
+	"github.com/DungntVccorp/grpc_api/api"
+	"github.com/DungntVccorp/gserver/gBase"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/health"

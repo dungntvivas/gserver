@@ -1,8 +1,10 @@
-module gitlab.vivas.vn/go/gserver
+module github.com/DungntVccorp/gserver
 
 go 1.19
 
 require (
+	github.com/DungntVccorp/grpc_api v0.9.43
+	github.com/DungntVccorp/libinternal v1.0.5
 	github.com/gin-gonic/gin v1.8.1
 	github.com/gobwas/ws v1.1.0
 	github.com/golang/protobuf v1.5.2
@@ -10,8 +12,6 @@ require (
 	github.com/panjf2000/gnet/v2 v2.1.2
 	github.com/pion/dtls/v2 v2.2.7
 	github.com/quic-go/quic-go v0.34.0
-	gitlab.vivas.vn/go/grpc_api v0.9.42
-	gitlab.vivas.vn/go/libinternal v1.0.4
 	golang.org/x/net v0.9.0
 	google.golang.org/grpc v1.52.0
 	google.golang.org/protobuf v1.28.1

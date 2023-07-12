@@ -1,24 +1,24 @@
 package gBase
 
 import (
-	"gitlab.vivas.vn/go/grpc_api/api"
+	"github.com/DungntVccorp/grpc_api/api"
 
-	"gitlab.vivas.vn/go/libinternal/logger"
+	"github.com/DungntVccorp/libinternal/logger"
 )
 
 type RequestProtocol uint8
 
 const (
-	RequestProtocol_HTTP   RequestProtocol = 0x2
-	RequestProtocol_TLS    RequestProtocol = 0x4
-	RequestProtocol_GRPC   RequestProtocol = 0x8
-	RequestProtocol_TCP    RequestProtocol = 0x10
-	RequestProtocol_WS     RequestProtocol = 0x20
-	RequestProtocol_UDP    RequestProtocol = 0x40
-	RequestProtocol_UDS    RequestProtocol = 0x80 // Unix Domain Socket ( linux , macos ) only
-	RequestProtocol_QUIC   RequestProtocol = 0x81
-	RequestProtocol_DTLS   RequestProtocol = 0x82
-	RequestProtocol_NONE   RequestProtocol = 0x0
+	RequestProtocol_HTTP RequestProtocol = 0x2
+	RequestProtocol_TLS  RequestProtocol = 0x4
+	RequestProtocol_GRPC RequestProtocol = 0x8
+	RequestProtocol_TCP  RequestProtocol = 0x10
+	RequestProtocol_WS   RequestProtocol = 0x20
+	RequestProtocol_UDP  RequestProtocol = 0x40
+	RequestProtocol_UDS  RequestProtocol = 0x80 // Unix Domain Socket ( linux , macos ) only
+	RequestProtocol_QUIC RequestProtocol = 0x81
+	RequestProtocol_DTLS RequestProtocol = 0x82
+	RequestProtocol_NONE RequestProtocol = 0x0
 )
 
 func (s RequestProtocol) String() string {
@@ -179,11 +179,11 @@ var DefaultTcpSocketConfigOption = ConfigOption{
 	EncodeType: Encryption_NONE,
 }
 var DefaultTlsSocketConfigOption = ConfigOption{
-	Addr:       ":44424",
-	Tls:        TLS{
+	Addr: ":44424",
+	Tls: TLS{
 		IsTLS: true,
-		Cert: "",
-		Key: "",
+		Cert:  "",
+		Key:   "",
 	},
 	Protocol:   RequestProtocol_TLS,
 	ServerName: "TLS",

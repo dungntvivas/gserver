@@ -1,7 +1,7 @@
 package gService
 
 import (
-	"gitlab.vivas.vn/go/gserver/gHTTP"
+	"github.com/DungntVccorp/gserver/gHTTP"
 	"os"
 	"os/signal"
 	"runtime"
@@ -9,11 +9,11 @@ import (
 
 	"google.golang.org/protobuf/types/known/anypb"
 
+	"github.com/DungntVccorp/grpc_api/api"
+	"github.com/DungntVccorp/gserver/gBase"
+	"github.com/DungntVccorp/gserver/gRPC"
+	"github.com/DungntVccorp/libinternal/logger"
 	"github.com/golang/protobuf/jsonpb"
-	"gitlab.vivas.vn/go/grpc_api/api"
-	"gitlab.vivas.vn/go/gserver/gBase"
-	"gitlab.vivas.vn/go/gserver/gRPC"
-	"gitlab.vivas.vn/go/libinternal/logger"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 )
@@ -49,7 +49,7 @@ func NewService(SvName string, _log *logger.Logger, config gBase.ConfigOption) *
 	return p
 }
 
-func (p *Service) EmbedHttpService(config gBase.ConfigOption) bool{
+func (p *Service) EmbedHttpService(config gBase.ConfigOption) bool {
 	if config.Tls.IsTLS {
 		if config.Tls.Cert == "" {
 			return false

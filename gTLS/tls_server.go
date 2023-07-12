@@ -6,9 +6,9 @@ import (
 	"crypto/rand"
 	"crypto/tls"
 	"fmt"
+	"github.com/DungntVccorp/grpc_api/api"
+	"github.com/DungntVccorp/gserver/gBase"
 	"github.com/panjf2000/gnet/v2"
-	"gitlab.vivas.vn/go/grpc_api/api"
-	"gitlab.vivas.vn/go/gserver/gBase"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
 	"net"
@@ -23,7 +23,7 @@ type TLSServer struct {
 	isRunning bool
 	// tls config
 	tls_config *tls.Config
-	tls_ln *net.Listener
+	tls_ln     *net.Listener
 
 	mu      sync.Mutex
 	clients sync.Map // ADDRESS ==> Connection ( 1 connection chứa thông tin kết nối ) client_id has connection
@@ -38,6 +38,7 @@ type TLSServer struct {
 	chReceiveMsg chan *gBase.SocketMessage
 	chClose      chan string
 }
+
 func New(config gBase.ConfigOption, chReceiveRequest chan *gBase.Payload) *TLSServer {
 
 	if !config.Tls.IsTLS {
@@ -53,31 +54,30 @@ func New(config gBase.ConfigOption, chReceiveRequest chan *gBase.Payload) *TLSSe
 	cer, err := tls.LoadX509KeyPair(config.Tls.Cert, config.Tls.Key)
 	//fmt.Printf("%v\n")
 	if err != nil {
-		fmt.Printf("Load Cert Error %v",err.Error())
+		fmt.Printf("Load Cert Error %v", err.Error())
 	}
 	b := gBase.GServer{
 		Config:           &config,
 		ChReceiveRequest: chReceiveRequest,
-
 	}
 	p := &TLSServer{
 		GServer:      b,
 		chReceiveMsg: make(chan *gBase.SocketMessage, 100),
 		chClose:      make(chan string),
-		tls_config: &tls.Config{Certificates: []tls.Certificate{cer},MaxVersion: tls.VersionTLS13,MinVersion: tls.VersionTLS12,Rand: rand.Reader},
-		isRunning: true,
+		tls_config:   &tls.Config{Certificates: []tls.Certificate{cer}, MaxVersion: tls.VersionTLS13, MinVersion: tls.VersionTLS12, Rand: rand.Reader},
+		isRunning:    true,
 	}
 	return p
 }
 func (p *TLSServer) Serve() error {
 	ln, err := tls.Listen("tcp", p.Config.Addr, p.tls_config)
 	if err != nil {
-		p.LogError("tls.Listen error => %v",err.Error())
+		p.LogError("tls.Listen error => %v", err.Error())
 		return err
 	}
 	p.tls_ln = &ln
 	go p.wait_for_new_connection()
-	p.LogInfo("Listening on %v",p.Config.Addr)
+	p.LogInfo("Listening on %v", p.Config.Addr)
 	for i := 0; i < runtime.NumCPU(); i++ {
 		go p.receiveMsg()
 	}
@@ -89,7 +89,7 @@ loop:
 	for {
 		select {
 		case key := <-p.chClose:
-			p.LogInfo("Close Connection %v",key)
+			p.LogInfo("Close Connection %v", key)
 			p.mu.Lock()
 			if _conn, ok := p.clients.Load(key); ok {
 				/// remove fd has connection
@@ -117,11 +117,11 @@ loop:
 		}
 	}
 }
-func (p *TLSServer) wait_for_new_connection(){
+func (p *TLSServer) wait_for_new_connection() {
 	for p.isRunning {
 		conn, err := (*p.tls_ln).Accept()
 		if err != nil {
-			p.LogError("Accept Connection Error %v \n",err.Error())
+			p.LogError("Accept Connection Error %v \n", err.Error())
 			continue
 		}
 		// store connection
@@ -153,14 +153,14 @@ func (p *TLSServer) wait_for_new_connection(){
 
 	}
 }
-func (p *TLSServer) handleConnection(conn *gBase.Connection){
+func (p *TLSServer) handleConnection(conn *gBase.Connection) {
 	defer (*conn.Client.Conn).Close()
 	r := bufio.NewReader(*conn.Client.Conn)
 	for p.isRunning {
 		b := make([]byte, 8192)
-		n,err := r.Read(b)
+		n, err := r.Read(b)
 		if err != nil {
-			p.LogInfo("%v",err.Error())
+			p.LogInfo("%v", err.Error())
 			key := fmt.Sprintf("%v_%v", p.Config.Protocol.String(), conn.Client.Fd)
 			p.chClose <- key
 			return
@@ -180,7 +180,6 @@ func (p *TLSServer) Close() {
 	p.isRunning = false
 	(*p.tls_ln).Close()
 }
-
 
 func (p *TLSServer) receiveMsg() {
 loop:

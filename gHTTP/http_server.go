@@ -8,9 +8,9 @@ import (
 	"net"
 	"net/http"
 
+	"github.com/DungntVccorp/grpc_api/api"
+	"github.com/DungntVccorp/gserver/gBase"
 	"github.com/gin-gonic/gin"
-	"gitlab.vivas.vn/go/grpc_api/api"
-	"gitlab.vivas.vn/go/gserver/gBase"
 )
 
 type RequestID struct {
@@ -45,7 +45,7 @@ func New(config gBase.ConfigOption, chReceiveRequest chan *gBase.Payload) *HTTPS
 	gin.SetMode(gin.ReleaseMode)
 	http_sv := gin.New()
 	http_sv.Any("/info", func(c *gin.Context) {
-		c.Data(http.StatusOK,"application/json", []byte("{\"status\":\"OK\"}"))
+		c.Data(http.StatusOK, "application/json", []byte("{\"status\":\"OK\"}"))
 	})
 	gV1 := http_sv.Group("/v1")
 	{
@@ -54,10 +54,10 @@ func New(config gBase.ConfigOption, chReceiveRequest chan *gBase.Payload) *HTTPS
 
 	if p.Config.Tls.H2_Enable {
 		p.http_sv = &http.Server{
-			Handler: h2c.NewHandler(http_sv,&http2.Server{}),
+			Handler:        h2c.NewHandler(http_sv, &http2.Server{}),
 			MaxHeaderBytes: http.DefaultMaxHeaderBytes,
 		}
-	}else{
+	} else {
 		p.http_sv = &http.Server{
 			Handler: http_sv,
 		}
@@ -78,14 +78,14 @@ func (p *HTTPServer) Serve() error {
 			go func() {
 				_err := p.http_sv.ServeTLS(p.listen, p.Config.Tls.Cert, p.Config.Tls.Key)
 				if _err != nil {
-					p.LogError("%v",_err)
+					p.LogError("%v", _err)
 				}
 			}()
 		} else {
 			go func() {
 				_err := p.http_sv.ServeTLS(p.listen, p.Config.Tls.Cert, p.Config.Tls.Key)
 				if _err != nil {
-					p.LogError("%v",_err)
+					p.LogError("%v", _err)
 				}
 			}()
 		}

@@ -7,12 +7,12 @@ import (
 	"net"
 	"sync"
 
+	"github.com/DungntVccorp/libinternal/encryption/aes"
+	"github.com/DungntVccorp/libinternal/encryption/rsa"
+	"github.com/DungntVccorp/libinternal/encryption/xor"
 	"github.com/gobwas/ws"
 	"github.com/gobwas/ws/wsutil"
 	"github.com/panjf2000/gnet/v2"
-	"gitlab.vivas.vn/go/libinternal/encryption/aes"
-	"gitlab.vivas.vn/go/libinternal/encryption/rsa"
-	"gitlab.vivas.vn/go/libinternal/encryption/xor"
 )
 
 type wsMessageBuf struct {
@@ -35,8 +35,8 @@ type ClientConnection struct {
 	IsAuthen    bool // kết nối này đã được xác thực hay chưa
 	PayloadType PayloadType
 
-	Conn *net.Conn // sử dụng cho udp connection
-	Lock  sync.RWMutex // sử dụng cho kết nối loại udp
+	Conn *net.Conn    // sử dụng cho udp connection
+	Lock sync.RWMutex // sử dụng cho kết nối loại udp
 }
 
 func (p *ClientConnection) isOK() bool {

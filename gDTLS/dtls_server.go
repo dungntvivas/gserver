@@ -10,10 +10,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/DungntVccorp/grpc_api/api"
+	"github.com/DungntVccorp/gserver/gBase"
 	"github.com/panjf2000/gnet/v2"
 	"github.com/pion/dtls/v2"
-	"gitlab.vivas.vn/go/grpc_api/api"
-	"gitlab.vivas.vn/go/gserver/gBase"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
 )
@@ -85,7 +85,7 @@ func New(config gBase.ConfigOption, chReceiveRequest chan *gBase.Payload) *DTLSS
 }
 
 func (p *DTLSServer) Serve() error {
-	p.LogInfo("Listening on %v",p.Config.Addr)
+	p.LogInfo("Listening on %v", p.Config.Addr)
 	go p.wait_for_new_connection()
 	for i := 0; i < runtime.NumCPU(); i++ {
 		go p.receiveMsg()
@@ -126,7 +126,7 @@ loop:
 }
 func (p *DTLSServer) wait_for_new_connection() {
 	// Wait for a connection.
-	for p.isRunning{
+	for p.isRunning {
 
 		conn, err := p.listener.Accept()
 		if err != nil { /// store connection

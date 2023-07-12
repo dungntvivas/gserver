@@ -1,7 +1,7 @@
 package gTCP
 
 import (
-	"gitlab.vivas.vn/go/gserver/gBase"
+	"github.com/DungntVccorp/gserver/gBase"
 )
 
 /* PAYLOAD

@@ -27,10 +27,10 @@ package main
 
 import (
 	"fmt"
-	"gitlab.vivas.vn/go/grpc_api/api"
-	"gitlab.vivas.vn/go/gserver/gBase"
-	"gitlab.vivas.vn/go/gserver/gService"
-	"gitlab.vivas.vn/go/libinternal/logger"
+	"github.com/DungntVccorp/grpc_api/api"
+	"github.com/DungntVccorp/gserver/gBase"
+	"github.com/DungntVccorp/gserver/gService"
+	"github.com/DungntVccorp/libinternal/logger"
 	"os"
 )
 

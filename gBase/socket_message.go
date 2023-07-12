@@ -5,13 +5,13 @@ import (
 	"fmt"
 	"github.com/gobwas/ws"
 
+	"github.com/DungntVccorp/grpc_api/api"
+	"github.com/DungntVccorp/libinternal/encryption/aes"
+	"github.com/DungntVccorp/libinternal/encryption/rsa"
+	"github.com/DungntVccorp/libinternal/encryption/xor"
+	"github.com/DungntVccorp/libinternal/logger"
 	"github.com/google/uuid"
 	"github.com/panjf2000/gnet/v2"
-	"gitlab.vivas.vn/go/grpc_api/api"
-	"gitlab.vivas.vn/go/libinternal/encryption/aes"
-	"gitlab.vivas.vn/go/libinternal/encryption/rsa"
-	"gitlab.vivas.vn/go/libinternal/encryption/xor"
-	"gitlab.vivas.vn/go/libinternal/logger"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -199,7 +199,7 @@ func WebsocketDecodePackage(log *logger.Logger, c gnet.Conn) ([]*SocketMessage, 
 	return models, gnet.None
 }
 
-func DecodeDTLSPacket(buf []byte)[]*SocketMessage {
+func DecodeDTLSPacket(buf []byte) []*SocketMessage {
 	models := []*SocketMessage{}
 	if _msg := DecodeData(buf, len(buf)); _msg != nil {
 		_msg.TypePayload = PayloadType_BIN
@@ -207,7 +207,7 @@ func DecodeDTLSPacket(buf []byte)[]*SocketMessage {
 	}
 	return models
 }
-func DecodeTLSPacket(buf []byte)[]*SocketMessage {
+func DecodeTLSPacket(buf []byte) []*SocketMessage {
 	models := []*SocketMessage{}
 	if _msg := DecodeData(buf, len(buf)); _msg != nil {
 		_msg.TypePayload = PayloadType_BIN
@@ -330,7 +330,7 @@ func (p *SocketMessage) DecodePayloadIfNeed() {
 			var err error
 			p.Payload, err = aes.CBCDecrypter(p.Payload, p.Conn.Server.PKey, p.Lable)
 			if err != nil {
-				fmt.Printf("err %v",err.Error())
+				fmt.Printf("err %v", err.Error())
 			}
 		}
 		p.MSG_encode_decode_type = Encryption_NONE

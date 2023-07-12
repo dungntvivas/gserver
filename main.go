@@ -5,20 +5,20 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
+	"github.com/DungntVccorp/grpc_api/api"
+	"github.com/DungntVccorp/gserver/gBase"
+	"github.com/DungntVccorp/gserver/gDTLS"
+	"github.com/DungntVccorp/gserver/gTLS"
 	"github.com/pion/dtls/v2"
-	"gitlab.vivas.vn/go/grpc_api/api"
-	"gitlab.vivas.vn/go/gserver/gBase"
-	"gitlab.vivas.vn/go/gserver/gDTLS"
-	"gitlab.vivas.vn/go/gserver/gTLS"
 	"log"
 	"os"
 	"os/signal"
 
-	//"gitlab.vivas.vn/go/gserver/gHTTP"
-	"gitlab.vivas.vn/go/libinternal/encryption/aes"
-	"gitlab.vivas.vn/go/libinternal/encryption/rsa"
-	"gitlab.vivas.vn/go/libinternal/encryption/xor"
-	"gitlab.vivas.vn/go/libinternal/logger"
+	//"github.com/DungntVccorp/gserver/gHTTP"
+	"github.com/DungntVccorp/libinternal/encryption/aes"
+	"github.com/DungntVccorp/libinternal/encryption/rsa"
+	"github.com/DungntVccorp/libinternal/encryption/xor"
+	"github.com/DungntVccorp/libinternal/logger"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
 	"net"
@@ -29,6 +29,7 @@ var interrupt chan os.Signal
 var tls_server *gTLS.TLSServer
 var dtls_server *gDTLS.DTLSServer
 var done chan struct{}
+
 func main() {
 
 	done = make(chan struct{})
@@ -46,7 +47,7 @@ func main() {
 	cf_dtls.EncodeType = gBase.Encryption_AES
 	cf_dtls.Logger = _logger
 	cf_dtls.Done = &done
-	dtls_server = gDTLS.New(cf_dtls,chReceiveRequest)
+	dtls_server = gDTLS.New(cf_dtls, chReceiveRequest)
 	dtls_server.Serve()
 
 	cf_tls := gBase.DefaultTlsSocketConfigOption
@@ -55,7 +56,7 @@ func main() {
 	cf_tls.Done = &done
 	cf_tls.EncodeType = gBase.Encryption_RSA
 	cf_tls.Logger = _logger
-	tls_server = gTLS.New(cf_tls,chReceiveRequest)
+	tls_server = gTLS.New(cf_tls, chReceiveRequest)
 	tls_server.Serve()
 
 	interrupt = make(chan os.Signal, 1)
@@ -125,8 +126,6 @@ func main() {
 	//}
 	//
 	//time.Sleep(time.Second * 2)
-
-
 
 	//conn, err := net.Dial("tcp", "10.3.3.119:8083")
 	//if err != nil {
@@ -303,7 +302,7 @@ func main() {
 
 }
 
-func onClose(){
+func onClose() {
 loop:
 	for {
 		select {
@@ -322,8 +321,8 @@ loop:
 
 }
 
-func tls_client(done *chan struct{}){
-	time.Sleep(time.Second*2)
+func tls_client(done *chan struct{}) {
+	time.Sleep(time.Second * 2)
 	conf := &tls.Config{
 		InsecureSkipVerify: true,
 	}
@@ -339,7 +338,7 @@ func tls_client(done *chan struct{}){
 		fmt.Println(x509.MarshalPKIXPublicKey(v.PublicKey))
 		fmt.Println(v.Subject)
 	}
-	go func (_conn *tls.Conn){
+	go func(_conn *tls.Conn) {
 		buf := make([]byte, 8192)
 		_rsa, _ := rsa.VRSA_NEW()
 		aes_key, _ := aes.NEW_AES_KEY()
@@ -396,10 +395,10 @@ func tls_client(done *chan struct{}){
 
 				// encode send to server
 				newMsg := gBase.NewMessage(_request, uint32(api.CONNECTION_GROUP_CONNECTION_GROUP_ID), request.Type, []byte{1, 2, 3, 4, 5})
-				_p, _ := newMsg.Encode(gBase.Encryption_Type(hlReceive.ServerEncodeType), hlReceive.PKey,false)
+				_p, _ := newMsg.Encode(gBase.Encryption_Type(hlReceive.ServerEncodeType), hlReceive.PKey, false)
 
 				_conn.Write(_p)
-			}else if msg.MsgType == uint32(api.TYPE_ID_REQUEST_HELLO) && msg.MsgGroup == uint32(api.CONNECTION_GROUP_CONNECTION_GROUP_ID) {
+			} else if msg.MsgType == uint32(api.TYPE_ID_REQUEST_HELLO) && msg.MsgGroup == uint32(api.CONNECTION_GROUP_CONNECTION_GROUP_ID) {
 				reply := api.Reply{}
 				//msg.Lable = lable
 				msg.ToProtoModel(&reply)
@@ -423,10 +422,10 @@ func tls_client(done *chan struct{}){
 						break
 					}
 					newMsg := gBase.NewMessage(_rq, uint32(api.CONNECTION_GROUP_CONNECTION_GROUP_ID), rq.Type, []byte{2, 3, 4, 5, 6})
-					_p, _ := newMsg.Encode(gBase.Encryption_Type(hlReceive.ServerEncodeType), hlReceive.PKey,false)
+					_p, _ := newMsg.Encode(gBase.Encryption_Type(hlReceive.ServerEncodeType), hlReceive.PKey, false)
 					_conn.Write(_p)
 				}
-			}else if msg.MsgType == uint32(api.TYPE_ID_REQUEST_KEEPALIVE) && msg.MsgGroup == uint32(api.CONNECTION_GROUP_CONNECTION_GROUP_ID) {
+			} else if msg.MsgType == uint32(api.TYPE_ID_REQUEST_KEEPALIVE) && msg.MsgGroup == uint32(api.CONNECTION_GROUP_CONNECTION_GROUP_ID) {
 				fmt.Printf("PING REQUEST\n")
 				time.Sleep(time.Second * 5)
 				rq := gBase.NewRequest(uint32(api.TYPE_ID_REQUEST_KEEPALIVE), uint32(api.CONNECTION_GROUP_CONNECTION_GROUP_ID))
@@ -443,7 +442,7 @@ func tls_client(done *chan struct{}){
 					break
 				}
 				newMsg := gBase.NewMessage(_rq, uint32(api.CONNECTION_GROUP_CONNECTION_GROUP_ID), rq.Type, []byte{2, 3, 4, 5, 6})
-				_p, _ := newMsg.Encode(gBase.Encryption_Type(hlReceive.ServerEncodeType), hlReceive.PKey,false)
+				_p, _ := newMsg.Encode(gBase.Encryption_Type(hlReceive.ServerEncodeType), hlReceive.PKey, false)
 				_conn.Write(_p)
 			}
 		}
@@ -451,10 +450,8 @@ func tls_client(done *chan struct{}){
 	<-*done
 }
 
-
-
-func dtls_client(done *chan struct{}){
-	time.Sleep(time.Second*2)
+func dtls_client(done *chan struct{}) {
+	time.Sleep(time.Second * 2)
 	addr := &net.UDPAddr{IP: net.ParseIP("0.0.0.0"), Port: 44444}
 	config := &dtls.Config{
 		PSK: func(hint []byte) ([]byte, error) {
@@ -469,10 +466,10 @@ func dtls_client(done *chan struct{}){
 	defer cancel()
 	dtlsConn, err := dtls.DialWithContext(ctx, "udp", addr, config)
 	if err != nil {
-		fmt.Printf("err %v",err.Error())
+		fmt.Printf("err %v", err.Error())
 		return
 	}
-	fmt.Printf("Connected %v\n",dtlsConn.RemoteAddr().String())
+	fmt.Printf("Connected %v\n", dtlsConn.RemoteAddr().String())
 
 	go func(_conn *dtls.Conn) {
 		buf := make([]byte, 8192)
@@ -532,10 +529,10 @@ func dtls_client(done *chan struct{}){
 
 				// encode send to server
 				newMsg := gBase.NewMessage(_request, uint32(api.CONNECTION_GROUP_CONNECTION_GROUP_ID), request.Type, []byte{1, 2, 3, 4, 5})
-				_p, _ := newMsg.Encode(gBase.Encryption_Type(hlReceive.ServerEncodeType), hlReceive.PKey,false)
+				_p, _ := newMsg.Encode(gBase.Encryption_Type(hlReceive.ServerEncodeType), hlReceive.PKey, false)
 
 				_conn.Write(_p)
-			}else if msg.MsgType == uint32(api.TYPE_ID_REQUEST_HELLO) && msg.MsgGroup == uint32(api.CONNECTION_GROUP_CONNECTION_GROUP_ID) {
+			} else if msg.MsgType == uint32(api.TYPE_ID_REQUEST_HELLO) && msg.MsgGroup == uint32(api.CONNECTION_GROUP_CONNECTION_GROUP_ID) {
 				reply := api.Reply{}
 				//msg.Lable = lable
 				msg.ToProtoModel(&reply)
@@ -559,10 +556,10 @@ func dtls_client(done *chan struct{}){
 						break
 					}
 					newMsg := gBase.NewMessage(_rq, uint32(api.CONNECTION_GROUP_CONNECTION_GROUP_ID), rq.Type, []byte{2, 3, 4, 5, 6})
-					_p, _ := newMsg.Encode(gBase.Encryption_Type(hlReceive.ServerEncodeType), hlReceive.PKey,false)
+					_p, _ := newMsg.Encode(gBase.Encryption_Type(hlReceive.ServerEncodeType), hlReceive.PKey, false)
 					_conn.Write(_p)
 				}
-			}else if msg.MsgType == uint32(api.TYPE_ID_REQUEST_KEEPALIVE) && msg.MsgGroup == uint32(api.CONNECTION_GROUP_CONNECTION_GROUP_ID) {
+			} else if msg.MsgType == uint32(api.TYPE_ID_REQUEST_KEEPALIVE) && msg.MsgGroup == uint32(api.CONNECTION_GROUP_CONNECTION_GROUP_ID) {
 				fmt.Printf("PING REQUEST\n")
 				time.Sleep(time.Second * 5)
 				rq := gBase.NewRequest(uint32(api.TYPE_ID_REQUEST_KEEPALIVE), uint32(api.CONNECTION_GROUP_CONNECTION_GROUP_ID))
@@ -579,7 +576,7 @@ func dtls_client(done *chan struct{}){
 					break
 				}
 				newMsg := gBase.NewMessage(_rq, uint32(api.CONNECTION_GROUP_CONNECTION_GROUP_ID), rq.Type, []byte{2, 3, 4, 5, 6})
-				_p, _ := newMsg.Encode(gBase.Encryption_Type(hlReceive.ServerEncodeType), hlReceive.PKey,false)
+				_p, _ := newMsg.Encode(gBase.Encryption_Type(hlReceive.ServerEncodeType), hlReceive.PKey, false)
 				_conn.Write(_p)
 			}
 		}

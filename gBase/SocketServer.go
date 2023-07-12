@@ -7,11 +7,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/DungntVccorp/grpc_api/api"
 	"github.com/gobwas/ws"
 	"github.com/gobwas/ws/wsutil"
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/panjf2000/gnet/v2"
-	"gitlab.vivas.vn/go/grpc_api/api"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
@@ -65,9 +65,9 @@ func NewSocket(config ConfigOption, chReceiveRequest chan *Payload) SocketServer
 }
 func (p *SocketServer) Serve() {
 	protocol := "tcp"
-	if p.Config.Protocol == RequestProtocol_TCP || p.Config.Protocol == RequestProtocol_WS  {
+	if p.Config.Protocol == RequestProtocol_TCP || p.Config.Protocol == RequestProtocol_WS {
 		protocol = "tcp://"
-	} else if p.Config.Protocol == RequestProtocol_UDP || p.Config.Protocol == RequestProtocol_DTLS{
+	} else if p.Config.Protocol == RequestProtocol_UDP || p.Config.Protocol == RequestProtocol_DTLS {
 		protocol = "udp://"
 	} else if p.Config.Protocol == RequestProtocol_UDS {
 		protocol = "unix://"
@@ -239,7 +239,6 @@ func (p *SocketServer) onReceiveRequest(msg *SocketMessage) {
 		p.onClientKeepAlive(msg)
 		return
 	}
-
 
 	rq := api.Request{}
 	rq.Type = msg.MsgType
