@@ -7,14 +7,13 @@ import (
 	"fmt"
 	"github.com/DungntVccorp/grpc_api/api"
 	"github.com/DungntVccorp/gserver/gBase"
-	"github.com/DungntVccorp/gserver/gDTLS"
+	"github.com/DungntVccorp/gserver/gTCP"
 	"github.com/DungntVccorp/gserver/gTLS"
 	"github.com/pion/dtls/v2"
 	"log"
 	"os"
 	"os/signal"
 
-	//"github.com/DungntVccorp/gserver/gHTTP"
 	"github.com/DungntVccorp/libinternal/encryption/aes"
 	"github.com/DungntVccorp/libinternal/encryption/rsa"
 	"github.com/DungntVccorp/libinternal/encryption/xor"
@@ -27,46 +26,49 @@ import (
 
 var interrupt chan os.Signal
 var tls_server *gTLS.TLSServer
-var dtls_server *gDTLS.DTLSServer
 var done chan struct{}
 
 func main() {
 
 	done = make(chan struct{})
 	chReceiveRequest := make(chan *gBase.Payload)
-	_logger, _ := logger.New(logger.Info, logger.LogDestinations{logger.DestinationFile: {}, logger.DestinationStdout: {}}, "/tmp/server.log")
-
-	cf := gBase.DefaultHttpsConfigOption
-	cf.Logger = _logger
-	//cf.Tls.Cert = "/Users/dungnt/Desktop/vivas/certificate.pem"
-	//cf.Tls.Key = "/Users/dungnt/Desktop/vivas/private.key"
-	//cf.Done = &done
-	//hsv := gHTTP.New(cf,chReceiveRequest)
-	//hsv.Serve()
-	cf_dtls := gBase.DefaultDTLSSocketConfigOption
-	cf_dtls.EncodeType = gBase.Encryption_AES
-	cf_dtls.Logger = _logger
-	cf_dtls.Done = &done
-	dtls_server = gDTLS.New(cf_dtls, chReceiveRequest)
-	dtls_server.Serve()
-
-	cf_tls := gBase.DefaultTlsSocketConfigOption
-	cf_tls.Tls.Cert = "/Users/dungnt/Desktop/vivas/certificate.pem"
-	cf_tls.Tls.Key = "/Users/dungnt/Desktop/vivas/private.key"
-	cf_tls.Done = &done
-	cf_tls.EncodeType = gBase.Encryption_RSA
-	cf_tls.Logger = _logger
-	tls_server = gTLS.New(cf_tls, chReceiveRequest)
-	tls_server.Serve()
+	_logger, err := logger.New(logger.Info, []logger.Destination{logger.DestinationFile, logger.DestinationStdout}, "./server.log")
+	if err != nil {
+		fmt.Println(err.Error())
+		os.Exit(99)
+	}
+	_logger.Log(logger.Info, "START GS SERVER")
+	//
+	//cf := gBase.DefaultHttpsConfigOption
+	//cf.Logger = _logger
+	////cf.Tls.Cert = "/Users/dungnt/Desktop/vivas/certificate.pem"
+	////cf.Tls.Key = "/Users/dungnt/Desktop/vivas/private.key"
+	////cf.Done = &done
+	////hsv := gHTTP.New(cf,chReceiveRequest)
+	////hsv.Serve()
+	//cf_dtls := gBase.DefaultDTLSSocketConfigOption
+	//cf_dtls.EncodeType = gBase.Encryption_AES
+	//cf_dtls.Logger = _logger
+	//cf_dtls.Done = &done
+	//
+	//cf_tls := gBase.DefaultTlsSocketConfigOption
+	//cf_tls.Tls.Cert = "/Users/dungnt/Desktop/vivas/certificate.pem"
+	//cf_tls.Tls.Key = "/Users/dungnt/Desktop/vivas/private.key"
+	//cf_tls.Done = &done
+	//cf_tls.EncodeType = gBase.Encryption_RSA
+	//cf_tls.Logger = _logger
+	//tls_server = gTLS.New(cf_tls, chReceiveRequest)
+	//tls_server.Serve()
 
 	interrupt = make(chan os.Signal, 1)
 
 	signal.Notify(interrupt, os.Interrupt)
 	//
 	//
-	//tcp_option := gBase.DefaultTcpSocketConfigOption
-	//tcp_option.EncodeType = gBase.Encryption_XOR
-	//tcp_option.Logger = _logger
+	tcp_option := gBase.DefaultTcpSocketConfigOption
+	tcp_option.EncodeType = gBase.Encryption_XOR
+	tcp_option.Logger = _logger
+	tcp_option.Done = &done
 	//udp_option := gBase.DefaultUdpSocketConfigOption
 	//udp_option.EncodeType = gBase.Encryption_AES
 	//udp_option.Logger = _logger
@@ -79,10 +81,10 @@ func main() {
 	//ws_option.EncodeType = gBase.Encryption_NONE
 	//ws_option.Logger = _logger
 	//
-	//go func() {
-	//	tcp := gTCP.New(tcp_option, chReceiveRequest)
-	//	tcp.Serve()
-	//}()
+	go func() {
+		tcp := gTCP.New(tcp_option, chReceiveRequest)
+		tcp.Serve()
+	}()
 	//go func() {
 	//	udp := gUDP.New(udp_option, chReceiveRequest)
 	//	udp.Serve()
@@ -295,8 +297,8 @@ func main() {
 	//	}
 	//}
 
-	go dtls_client(&done)
-	go tls_client(&done)
+	//go dtls_client(&done)
+	//go tls_client(&done)
 	go onClose()
 	<-done
 
@@ -309,10 +311,6 @@ loop:
 		case <-interrupt:
 			break loop
 		}
-	}
-
-	if dtls_server != nil {
-		dtls_server.Close()
 	}
 	if tls_server != nil {
 		tls_server.Close()
