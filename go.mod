@@ -3,7 +3,7 @@ module github.com/DungntVccorp/gserver
 go 1.19
 
 require (
-	github.com/DungntVccorp/grpc_api v0.9.44
+	github.com/DungntVccorp/grpc_api v0.9.45
 	github.com/DungntVccorp/libinternal v1.0.8
 	github.com/gin-gonic/gin v1.8.1
 	github.com/gobwas/ws v1.1.0
