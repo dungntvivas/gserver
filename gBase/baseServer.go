@@ -67,6 +67,7 @@ type Payload struct {
 	IsAuth        bool   /// người dùng này đã authen mark connection với 1 tài khoản nào hay chưa
 	Session_id    string // sesion_id mark với tài khoản
 	User_id       string // id của người dùng khi đã authen
+	SubRequest    bool
 }
 type PayloadPush struct {
 }

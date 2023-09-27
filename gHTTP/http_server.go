@@ -2,11 +2,12 @@ package gHTTP
 
 import (
 	"context"
-	"golang.org/x/net/http2"
-	"golang.org/x/net/http2/h2c"
 	"io"
 	"net"
 	"net/http"
+
+	"golang.org/x/net/http2"
+	"golang.org/x/net/http2/h2c"
 
 	"github.com/DungntVccorp/grpc_api/api"
 	"github.com/DungntVccorp/gserver/gBase"
@@ -110,7 +111,6 @@ func (p *HTTPServer) onReceiveRequest(ctx *gin.Context) {
 	result := make(chan *api.Reply)
 	defer close(result)
 	contenxtType := ctx.Request.Header.Get("Content-Type")
-	vAuthorization := ctx.Request.Header.Get("V-Authorization")
 	ctType := gBase.PayloadType_JSON
 	var bindata []byte
 	var err error
@@ -137,7 +137,7 @@ func (p *HTTPServer) onReceiveRequest(ctx *gin.Context) {
 		goto on_return
 	}
 	request.BinRequest = bindata
-	request.Session = &api.Session{SessionId: vAuthorization}
+	request.Session = &api.Session{}
 	// send data to handler
 	p.HandlerRequest(&gBase.Payload{Request: request, ChReply: result})
 	// wait for return data
