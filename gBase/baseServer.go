@@ -68,6 +68,7 @@ type Payload struct {
 	Session_id    string // sesion_id mark với tài khoản
 	User_id       string // id của người dùng khi đã authen
 	SubRequest    bool
+	SubID         string
 }
 type PayloadPush struct {
 }
