@@ -9,7 +9,7 @@ import (
 	"encoding/pem"
 	"math/big"
 
-	"github.com/DungntVccorp/gserver/gBase"
+	"github.com/dungntvivas/gserver/gBase"
 	"github.com/quic-go/quic-go"
 )
 

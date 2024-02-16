@@ -1,7 +1,7 @@
 package gWebsocket
 
 import (
-	"github.com/DungntVccorp/gserver/gBase"
+	"github.com/dungntvivas/gserver/gBase"
 )
 
 type WSServer struct {

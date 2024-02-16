@@ -27,10 +27,10 @@ package main
 
 import (
 	"fmt"
-	"github.com/DungntVccorp/grpc_api/api"
-	"github.com/DungntVccorp/gserver/gBase"
-	"github.com/DungntVccorp/gserver/gService"
-	"github.com/DungntVccorp/libinternal/logger"
+	"github.com/dungntvivas/grpc_api/api"
+	"github.com/dungntvivas/gserver/gBase"
+	"github.com/dungntvivas/gserver/gService"
+	"github.com/dungntvivas/libinternal/logger"
 	"os"
 )
 

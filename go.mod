@@ -1,10 +1,10 @@
-module github.com/DungntVccorp/gserver
+module github.com/dungntvivas/gserver
 
 go 1.19
 
 require (
-	github.com/DungntVccorp/grpc_api v0.9.50
-	github.com/DungntVccorp/libinternal v1.0.13
+	github.com/dungntvivas/grpc_api v0.9.52
+	github.com/dungntvivas/libinternal v1.0.19
 	github.com/gin-gonic/gin v1.8.1
 	github.com/gobwas/ws v1.1.0
 	github.com/golang/protobuf v1.5.2

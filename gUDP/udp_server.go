@@ -1,11 +1,10 @@
 //go:build !windows
 // +build !windows
 
-//
 package gUDP
 
 import (
-	"github.com/DungntVccorp/gserver/gBase"
+	"github.com/dungntvivas/gserver/gBase"
 )
 
 /*

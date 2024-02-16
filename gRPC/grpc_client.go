@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/DungntVccorp/grpc_api/api"
+	"github.com/dungntvivas/grpc_api/api"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/resolver"

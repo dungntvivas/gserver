@@ -9,8 +9,8 @@ import (
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
 
-	"github.com/DungntVccorp/grpc_api/api"
-	"github.com/DungntVccorp/gserver/gBase"
+	"github.com/dungntvivas/grpc_api/api"
+	"github.com/dungntvivas/gserver/gBase"
 	"github.com/gin-gonic/gin"
 )
 

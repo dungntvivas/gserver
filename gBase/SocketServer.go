@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/DungntVccorp/grpc_api/api"
+	"github.com/dungntvivas/grpc_api/api"
 	"github.com/gobwas/ws"
 	"github.com/gobwas/ws/wsutil"
 	"github.com/golang/protobuf/jsonpb"

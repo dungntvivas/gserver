@@ -1,10 +1,11 @@
 package gBase
 
 import (
-	"github.com/DungntVccorp/grpc_api/api"
+	"time"
+
+	"github.com/dungntvivas/grpc_api/api"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
-	"time"
 )
 
 func NewReceiveMsg(msgType int, payloadReceive *anypb.Any) *api.Receive {

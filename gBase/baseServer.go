@@ -1,9 +1,9 @@
 package gBase
 
 import (
-	"github.com/DungntVccorp/grpc_api/api"
+	"github.com/dungntvivas/grpc_api/api"
 
-	"github.com/DungntVccorp/libinternal/logger"
+	"github.com/dungntvivas/libinternal/logger"
 )
 
 type RequestProtocol uint8

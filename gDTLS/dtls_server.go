@@ -1,7 +1,6 @@
 //go:build !windows
 // +build !windows
 
-//
 package gDTLS
 
 import (
@@ -14,8 +13,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/DungntVccorp/grpc_api/api"
-	"github.com/DungntVccorp/gserver/gBase"
+	"github.com/dungntvivas/grpc_api/api"
+	"github.com/dungntvivas/gserver/gBase"
 	"github.com/panjf2000/gnet/v2"
 	"github.com/pion/dtls/v2"
 	"google.golang.org/protobuf/proto"

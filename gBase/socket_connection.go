@@ -7,9 +7,9 @@ import (
 	"net"
 	"sync"
 
-	"github.com/DungntVccorp/libinternal/encryption/aes"
-	"github.com/DungntVccorp/libinternal/encryption/rsa"
-	"github.com/DungntVccorp/libinternal/encryption/xor"
+	"github.com/dungntvivas/libinternal/encryption/aes"
+	"github.com/dungntvivas/libinternal/encryption/rsa"
+	"github.com/dungntvivas/libinternal/encryption/xor"
 	"github.com/gobwas/ws"
 	"github.com/gobwas/ws/wsutil"
 	"github.com/panjf2000/gnet/v2"

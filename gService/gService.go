@@ -1,18 +1,19 @@
 package gService
 
 import (
-	"github.com/DungntVccorp/gserver/gHTTP"
 	"os"
 	"os/signal"
 	"runtime"
 	"sync"
 
+	"github.com/dungntvivas/gserver/gHTTP"
+
 	"google.golang.org/protobuf/types/known/anypb"
 
-	"github.com/DungntVccorp/grpc_api/api"
-	"github.com/DungntVccorp/gserver/gBase"
-	"github.com/DungntVccorp/gserver/gRPC"
-	"github.com/DungntVccorp/libinternal/logger"
+	"github.com/dungntvivas/grpc_api/api"
+	"github.com/dungntvivas/gserver/gBase"
+	"github.com/dungntvivas/gserver/gRPC"
+	"github.com/dungntvivas/libinternal/logger"
 	"github.com/golang/protobuf/jsonpb"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"

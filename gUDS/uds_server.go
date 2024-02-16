@@ -1,7 +1,7 @@
 package gUDS
 
 import (
-	"github.com/DungntVccorp/gserver/gBase"
+	"github.com/dungntvivas/gserver/gBase"
 )
 
 /* PAYLOAD
