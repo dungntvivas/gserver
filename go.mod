@@ -9,7 +9,7 @@ require (
 	github.com/gobwas/ws v1.1.0
 	github.com/golang/protobuf v1.5.2
 	github.com/google/uuid v1.3.0
-	github.com/panjf2000/gnet/v2 v2.3.0
+	github.com/panjf2000/gnet/v2 v2.5.0
 	github.com/pion/dtls/v2 v2.2.7
 	github.com/quic-go/quic-go v0.34.0
 	golang.org/x/net v0.9.0
